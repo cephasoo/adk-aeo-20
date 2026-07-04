@@ -1,4 +1,4 @@
-# 🚀 Gutenberg AEO Copilot
+# Gutenberg AEO Copilot
 > **Autonomous WordPress SEO & Answer Engine Optimization (AEO) Auditor**
 
 Gutenberg AEO Copilot is an autonomous agent built using the **Google Agent Development Kit (ADK) 2.0**. It helps modern publishers optimize their content for both traditional search engines (SEO) and generative search engines (Answer Engine Optimization / AEO, such as Google AI Overviews / SGE).
@@ -7,7 +7,7 @@ This project was built as a Capstone Project for the **5-Day AI Agents Intensive
 
 ---
 
-## 🗺️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TD
@@ -35,7 +35,7 @@ graph TD
 
 ---
 
-## ✨ Key Features & Concepts Demonstrated
+## Key Features & Concepts Demonstrated
 
 ### 1. Spec-Driven Orchestration (Day 1 & Day 5)
 * Utilizes the `google-adk` framework's `Workflow` and `Edge` graph classes.
@@ -58,7 +58,7 @@ graph TD
 
 ---
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 * Python 3.10+
@@ -113,7 +113,7 @@ graph TD
 
 ---
 
-## 🤖 Running the Bot & Commands
+## Running the Bot & Commands
 
 To start the bot in local polling mode:
 ```bash
@@ -133,7 +133,7 @@ Open Telegram and send commands to your configured bot:
 
 ---
 
-## 🧪 Verification & Testing
+## Verification & Testing
 
 To run the unit and integration tests:
 ```bash

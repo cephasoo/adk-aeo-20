@@ -4,7 +4,7 @@ This guide details the step-by-step instructions to configure your local WordPre
 
 ---
 
-## 🖥️ Step 1: Local WordPress Staging Setup
+## Step 1: Local WordPress Staging Setup
 
 Since you do not have an active staging instance, we will configure a local sandbox.
 
@@ -32,7 +32,7 @@ The ADK agent interacts with Gutenberg via the secure REST API using **Applicati
 
 ---
 
-## 🤖 Step 2: Telegram Bot Registration
+## Step 2: Telegram Bot Registration
 
 We will use the free Telegram Bot API to handle chatbot queries.
 
@@ -48,7 +48,7 @@ We will use the free Telegram Bot API to handle chatbot queries.
 
 ---
 
-## ⚙️ Step 3: Configure Environment Variables
+## Step 3: Configure Environment Variables
 
 Create a file named `.env` in the root of your project directory (`C:\Users\USER\secure-agent-lab\gutenberg-aeo-copilot\.env`) and fill in your keys:
 
@@ -75,7 +75,7 @@ DEVELOPER_SECRET_KEY="your-developer-secret-key"
 
 ---
 
-## 🔒 Step 4: Google Search Console (GSC) Audit Mode
+## Step 4: Google Search Console (GSC) Audit Mode
 
 The `/gsc` command inspects URL indexation, mobile usability, CTR metrics, and search queries. It supports two modes:
 
