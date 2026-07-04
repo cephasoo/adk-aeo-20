@@ -55,7 +55,7 @@ Create a file named `.env` in the root of your project directory (`C:\Users\USER
 ```bash
 # Model & Analytics Credentials
 GEMINI_API_KEY="your-gemini-api-key"
-GEMINI_MODEL="gemini-3.5-flash"
+GEMINI_MODEL="gemini-2.5-flash"
 GOOGLE_CLOUD_PROJECT="your-google-cloud-project-id"
 
 # Telegram Bot Credentials
