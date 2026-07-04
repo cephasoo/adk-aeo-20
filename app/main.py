@@ -81,38 +81,77 @@ def markdown_to_html(text: str) -> str:
     return t
 
 def send_telegram_message(chat_id: int, text: str):
-    """Sends a formatted text message back to the Telegram chat."""
+    """Sends a formatted text message back to the Telegram chat, chunking if necessary."""
     if not TOKEN:
         print(f"[MOCK SEND] Chat ID: {chat_id} | Msg: {text}")
         return
 
-    url = f"{TELEGRAM_API_URL}/sendMessage"
-    html_text = markdown_to_html(text)
+    # Split the message into chunks if it is too long (limit is 4096, we use 3800 to be safe with HTML tags)
+    chunks = []
+    current_chunk = []
+    current_length = 0
+    in_code_block = False
+    code_block_lang = ""
 
-    payload = {
-        "chat_id": chat_id,
-        "text": html_text,
-        "parse_mode": "HTML"
-    }
-    try:
-        print(f"[*] Sending message to Telegram chat {chat_id}...")
-        response = requests.post(url, json=payload, timeout=10)
-
-        # If HTML rendering fails, fallback to plain text
-        if response.status_code != 200:
-            print(f"[!] Telegram API warning (status {response.status_code}): {response.text}")
-            print("[*] Retrying in plain text mode...")
-            payload["text"] = text  # Use raw unescaped text
-            payload.pop("parse_mode", None)
-            retry_resp = requests.post(url, json=payload, timeout=10)
-            if retry_resp.status_code == 200:
-                print("[*] Telegram message delivered successfully in plain text mode.")
+    for line in text.split('\n'):
+        # Track code block status to handle split code blocks nicely
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+            if in_code_block:
+                code_block_lang = line.strip()[3:]
             else:
-                print(f"[!] Telegram API error on retry (status {retry_resp.status_code}): {retry_resp.text}")
+                code_block_lang = ""
+
+        # Estimate line length (add 1 for the newline character)
+        line_len = len(line) + 1
+        if current_length + line_len > 3800:
+            # Close code block if open in this chunk
+            if in_code_block:
+                current_chunk.append("```")
+            chunks.append("\n".join(current_chunk))
+
+            # Start new chunk
+            current_chunk = []
+            # Re-open code block in next chunk if it was split
+            if in_code_block:
+                current_chunk.append(f"```{code_block_lang}")
+            current_chunk.append(line)
+            current_length = sum(len(l) + 1 for l in current_chunk)
         else:
-            print("[*] Telegram message delivered successfully.")
-    except Exception as e:
-        print(f"Error sending message to Telegram: {e}")
+            current_chunk.append(line)
+            current_length += line_len
+
+    if current_chunk:
+        chunks.append("\n".join(current_chunk))
+
+    url = f"{TELEGRAM_API_URL}/sendMessage"
+
+    for chunk in chunks:
+        html_text = markdown_to_html(chunk)
+        payload = {
+            "chat_id": chat_id,
+            "text": html_text,
+            "parse_mode": "HTML"
+        }
+        try:
+            print(f"[*] Sending message chunk to Telegram chat {chat_id}...")
+            response = requests.post(url, json=payload, timeout=10)
+
+            # If HTML rendering fails, fallback to plain text
+            if response.status_code != 200:
+                print(f"[!] Telegram API warning (status {response.status_code}): {response.text}")
+                print("[*] Retrying chunk in plain text mode...")
+                payload["text"] = chunk  # Use raw unescaped text
+                payload.pop("parse_mode", None)
+                retry_resp = requests.post(url, json=payload, timeout=10)
+                if retry_resp.status_code == 200:
+                    print("[*] Telegram message chunk delivered successfully in plain text mode.")
+                else:
+                    print(f"[!] Telegram API error on retry (status {retry_resp.status_code}): {retry_resp.text}")
+            else:
+                print("[*] Telegram message chunk delivered successfully.")
+        except Exception as e:
+            print(f"Error sending message chunk to Telegram: {e}")
 
 def handle_incoming_message(chat_id: int, text: str):
     """Feeds incoming Telegram commands to the ADK agent and returns responses."""
