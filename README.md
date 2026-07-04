@@ -45,9 +45,10 @@ graph TD
 * Built-in multi-tiered location resolution engine that parses country-specific ccTLDs (like `.co.uk`, `.com.ng`, `.ca`), queries the Google Knowledge Graph to resolve headquarters addresses, and resolves search regions dynamically.
 * Supports autocomplete, Google Maps geocoding, SGE page token tracking, and AI Overview Mode.
 
-### 3. Agent Skills: Social Listening & Performance Trends (Day 3)
-* **Social Listener**: Scans Google Forums (Reddit, Quora) and trusted publication platforms (Substack, Medium) to identify high-engagement community threads and formulates AEO prompts for narrative gap analysis.
-* **AEO Performance Tracker**: Logs historical Citation Stability (CSS), Share of Model (SoM), and Sentiment-Weighted Citations (SWC) to Firestore to track organic citation trends.
+### 3. Custom Agent Skills (Day 3)
+* **seo-auditor**: Enforces structured rules for auditing HTML heading hierarchies and image alt tags on crawled web pages.
+* **manage-aeo-custom-blocks**: Guides the agent on how to format AEO custom Gutenberg blocks (like Hero and FAQ cards) and call the WordPress page generator.
+* **automation-roi-parameters**: Integrates guidelines for measuring search value and AEO return-on-investment parameters.
 
 ### 4. Enterprise-Grade Security Paved Roads (Day 4)
 * **Pre-Commit Hook**: Integrates a local Git hook scanning for hardcoded secrets and API keys using custom Semgrep rules. Includes a Windows-compatible native Python launcher shim inside `.venv`.
