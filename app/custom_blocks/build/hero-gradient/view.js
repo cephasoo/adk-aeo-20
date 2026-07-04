@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",()=>{const e=document.querySelector(".wp-block-post-title"),o=document.querySelector(".wp-block-aeo-hero-gradient .aeo-hero-gradient-header, .wp-block-aeo-hero .aeo-hero-gradient-header");if(e&&o){const t=o.querySelector("h1");t&&t.remove(),o.insertBefore(e,o.firstChild),e.classList.add("aeo-hero-gradient-dynamic-title")}});

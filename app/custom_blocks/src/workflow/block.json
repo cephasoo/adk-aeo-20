@@ -1,0 +1,54 @@
+{
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/workflow",
+  "title": "AEO Agentic Workflow",
+  "category": "design",
+  "icon": "random",
+  "description": "An interactive timeline block showcasing the step-by-step pipeline of an agentic automation workflow.",
+  "supports": {
+    "html": false,
+    "align": true
+  },
+  "attributes": {
+    "activeColor": {
+      "type": "string",
+      "default": "#f59e0b"
+    },
+    "steps": {
+      "type": "array",
+      "default": [
+        {
+          "number": "01",
+          "title": "Social Listening",
+          "description": "Scrapes Reddit, Quora, and targeted publications to detect high-interest topics where search engines lack high-authority answers."
+        },
+        {
+          "number": "02",
+          "title": "Agentic Audit & Content Writing",
+          "description": "Deploys deep research agents to compile raw data and generates comprehensive AEO-optimized schema and article layouts."
+        },
+        {
+          "number": "03",
+          "title": "REST API Dispatch",
+          "description": "Programmatically pushes fresh content and injected JSON-LD metadata directly into CMS endpoints for indexing."
+        }
+      ]
+    },
+    "outerBgColor": {
+      "type": "string",
+      "default": ""
+    },
+    "innerBgColor": {
+      "type": "string",
+      "default": ""
+    },
+    "columns": {
+      "type": "number",
+      "default": 3
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewScript": "file:./view.js"
+}

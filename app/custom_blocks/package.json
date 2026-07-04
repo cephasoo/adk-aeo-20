@@ -1,0 +1,14 @@
+{
+  "name": "aeo-custom-blocks",
+  "version": "1.0.0",
+  "description": "Custom high-converting Gutenberg blocks for AEO optimization.",
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^28.5.0",
+    "@babel/runtime": "^7.24.0",
+    "@babel/core": "^7.24.0"
+  }
+}

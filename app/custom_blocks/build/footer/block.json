@@ -1,0 +1,110 @@
+{
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/footer",
+  "title": "AEO Custom Footer",
+  "category": "design",
+  "icon": "embed-generic",
+  "description": "Glassmorphic multi-column footer with customizable brand info, resource links, and agent status indicator.",
+  "supports": {
+    "html": false,
+    "align": [
+      "full"
+    ]
+  },
+  "attributes": {
+    "brandText": {
+      "type": "string",
+      "default": "aeo-copilot"
+    },
+    "description": {
+      "type": "string",
+      "default": "Intelligent marketing automation and agentic search optimization for high-growth enterprises."
+    },
+    "column1Title": {
+      "type": "string",
+      "default": "Platform"
+    },
+    "column1Links": {
+      "type": "array",
+      "default": [
+        {
+          "label": "Features",
+          "url": "#features"
+        },
+        {
+          "label": "Solutions",
+          "url": "#solutions"
+        },
+        {
+          "label": "Pricing",
+          "url": "#pricing"
+        },
+        {
+          "label": "Security",
+          "url": "#security"
+        }
+      ]
+    },
+    "column2Title": {
+      "type": "string",
+      "default": "Resources"
+    },
+    "column2Links": {
+      "type": "array",
+      "default": [
+        {
+          "label": "Documentation",
+          "url": "#docs"
+        },
+        {
+          "label": "API Reference",
+          "url": "#api"
+        },
+        {
+          "label": "AEO Guide",
+          "url": "#aeo-guide"
+        },
+        {
+          "label": "Community",
+          "url": "#community"
+        }
+      ]
+    },
+    "column3Title": {
+      "type": "string",
+      "default": "Company"
+    },
+    "column3Links": {
+      "type": "array",
+      "default": [
+        {
+          "label": "About Us",
+          "url": "#about"
+        },
+        {
+          "label": "Careers",
+          "url": "#careers"
+        },
+        {
+          "label": "Contact",
+          "url": "#contact"
+        },
+        {
+          "label": "Privacy Policy",
+          "url": "#privacy"
+        }
+      ]
+    },
+    "statusText": {
+      "type": "string",
+      "default": "System Status: All Agents Operational"
+    },
+    "copyrightText": {
+      "type": "string",
+      "default": "© 2026 Sonnet and Prose. All rights reserved."
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css"
+}

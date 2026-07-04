@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/hero-svg",
+  "title": "AEO Hero SVG",
+  "category": "design",
+  "icon": "cover-image",
+  "description": "Premium AEO Hero Section with dynamic page title binding and inline SVG grid overlay for LCP/CLS optimization.",
+  "supports": {
+    "html": false,
+    "align": true
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "source": "html",
+      "selector": "h1"
+    },
+    "subtitle": {
+      "type": "string",
+      "source": "html",
+      "selector": "p.aeo-hero-gradient-subtitle",
+      "default": "Optimized vector background with dynamic H1 relocation."
+    },
+    "ctaText": {
+      "type": "string",
+      "default": "Get Started"
+    },
+    "ctaUrl": {
+      "type": "string",
+      "default": "#"
+    },
+    "svgUrl": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewScript": "file:./view.js"
+}

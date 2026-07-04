@@ -1,0 +1,323 @@
+/* ============================================================
+   AEO Navigation Menu — Glassmorphic Floating Bar
+   ============================================================ */
+
+// Design tokens
+$nav-height: 64px;
+$nav-bg: rgba(15, 23, 42, 0.78);
+$nav-blur: 14px;
+$nav-border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+$brand-color: #f1f5f9;
+$link-color: #cbd5e1;
+$link-hover: #ffffff;
+$cta-gradient: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+$cta-shadow: 0 4px 20px rgba(245, 158, 11, 0.35);
+$cta-radius: 8px;
+$transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+html {
+    scroll-behavior: smooth;
+}
+
+// ── Wrapper ──────────────────────────────────────────────────
+.wp-block-aeo-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100vw !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    z-index: 9999;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+// ── Core Bar ─────────────────────────────────────────────────
+.aeo-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: $nav-height;
+    padding: 0 clamp(16px, 4vw, 48px);
+    background: $nav-bg;
+    backdrop-filter: blur($nav-blur);
+    -webkit-backdrop-filter: blur($nav-blur);
+    border-bottom: $nav-border-bottom;
+    transition: background $transition-base, box-shadow $transition-base;
+
+    // Scrolled state — added via view.js
+    &.aeo-nav-scrolled {
+        background: rgba(15, 23, 42, 0.94);
+        box-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+    }
+}
+
+// ── Brand / Logo Text ────────────────────────────────────────
+.aeo-nav-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $brand-color;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+// ── Link Array ───────────────────────────────────────────────
+.aeo-nav-links {
+    display: flex;
+    list-style: none;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+}
+
+.aeo-nav-link-item {
+    position: relative;
+
+    a, span {
+        display: inline-block;
+        padding: 8px 14px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: $link-color;
+        text-decoration: none;
+        transition: color $transition-base;
+
+        &:hover,
+        &:focus-visible {
+            color: $link-hover;
+        }
+    }
+
+    // Sliding underline indicator
+    &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 14px;
+        right: 14px;
+        height: 2px;
+        background: $cta-gradient;
+        border-radius: 1px;
+        transform: scaleX(0);
+        transform-origin: center;
+        transition: transform $transition-base;
+    }
+
+    &:hover::after,
+    &.active::after {
+        transform: scaleX(1);
+    }
+}
+
+// ── CTA Button ───────────────────────────────────────────────
+.aeo-nav-cta-wrap {
+    flex-shrink: 0;
+}
+
+.aeo-nav-cta-btn {
+    display: inline-block;
+    padding: 10px 24px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: $cta-gradient;
+    border-radius: $cta-radius;
+    text-decoration: none;
+    box-shadow: $cta-shadow;
+    transition: transform $transition-base, box-shadow $transition-base;
+    cursor: pointer;
+
+    &:hover {
+        transform: translateY(-1px) scale(1.03);
+        box-shadow: 0 6px 28px rgba(245, 158, 11, 0.45);
+    }
+}
+
+// ── Hamburger (mobile) ───────────────────────────────────────
+.aeo-nav-burger {
+    display: none;          // hidden on desktop
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    z-index: 10001;
+
+    span {
+        display: block;
+        width: 100%;
+        height: 2px;
+        background: #e2e8f0;
+        border-radius: 2px;
+        transition: transform $transition-base, opacity $transition-base;
+    }
+
+    // Animated X when drawer is open
+    &.open span:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+    }
+    &.open span:nth-child(2) {
+        opacity: 0;
+    }
+    &.open span:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+    }
+}
+
+// ── Mobile Drawer Overlay ────────────────────────────────────
+.aeo-nav-drawer {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(15, 23, 42, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+
+    &.open {
+        display: flex;
+        opacity: 1;
+    }
+
+    .aeo-nav-drawer-close {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        background: none;
+        border: none;
+        color: #e2e8f0;
+        font-size: 2.5rem;
+        cursor: pointer;
+        padding: 8px;
+        line-height: 1;
+        transition: color $transition-base, transform $transition-base;
+
+        &:hover,
+        &:focus-visible {
+            color: #ffffff;
+            transform: scale(1.1);
+        }
+    }
+
+    .aeo-nav-drawer-link {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #e2e8f0;
+        text-decoration: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        transition: background $transition-base, color $transition-base, transform $transition-base;
+        transform: translateY(12px);
+        opacity: 0;
+        animation: aeoNavDrawerSlideIn 0.4s ease forwards;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+        }
+    }
+
+    @for $i from 1 through 8 {
+        .aeo-nav-drawer-link:nth-child(#{$i}) {
+            animation-delay: #{$i * 0.06}s;
+        }
+    }
+
+    .aeo-nav-drawer-cta {
+        margin-top: 24px;
+        padding: 14px 36px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #ffffff;
+        background: $cta-gradient;
+        border-radius: $cta-radius;
+        text-decoration: none;
+        box-shadow: $cta-shadow;
+        transform: translateY(12px);
+        opacity: 0;
+        animation: aeoNavDrawerSlideIn 0.4s ease forwards;
+        animation-delay: 0.5s;
+        transition: transform $transition-base;
+
+        &:hover {
+            transform: translateY(-2px) scale(1.04);
+        }
+    }
+}
+
+@keyframes aeoNavDrawerSlideIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+// ── Responsive ───────────────────────────────────────────────
+@media (max-width: 768px) {
+    .aeo-nav-links,
+    .aeo-nav-cta-wrap {
+        display: none;    // hidden — drawer takes over
+    }
+
+    .aeo-nav-burger {
+        display: flex;
+    }
+}
+
+// ── Body offset for fixed nav ────────────────────────────────
+// When the nav block is present, push body content below the fixed bar
+body:has(.wp-block-aeo-nav) {
+    padding-top: $nav-height !important;
+
+    // Hide the theme's own header when our custom nav is active
+    header.wp-block-template-part,
+    .wp-block-site-title {
+        display: none !important;
+    }
+
+    // WordPress admin-bar offset (logged-in users)
+    &.admin-bar {
+        padding-top: $nav-height !important; // html margin-top handles the 32px offset
+
+        .wp-block-aeo-nav {
+            top: 32px;
+        }
+    }
+
+    @media (max-width: 782px) {
+        &.admin-bar {
+            padding-top: $nav-height !important;
+
+            .wp-block-aeo-nav {
+                top: 0;
+            }
+        }
+    }
+}
+
+// ── Global Content Spacing (Removes "glued" layout borders) ──
+.wp-block-post-content,
+.entry-content,
+main {
+    padding-bottom: 4.5rem !important;
+
+    // Default padding-top if the page has no custom hero block at the top
+    &:not(:has(.wp-block-aeo-hero-gradient, .wp-block-aeo-hero-svg)) {
+        padding-top: 4.5rem !important;
+    }
+}
+
+// Ensure first content block after a hero has proper breathing room
+.wp-block-aeo-hero-gradient + *,
+.wp-block-aeo-hero-svg + * {
+    margin-top: 4.5rem !important;
+}

@@ -1,0 +1,74 @@
+/* Editor-only styles for the AEO Navigation Menu block */
+.wp-block-aeo-nav {
+    background: #0f172a;
+    border: none;
+    border-radius: 8px;
+    padding: 0;
+    overflow: hidden;
+
+    .aeo-nav-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+        padding: 0 24px;
+        background: rgba(15, 23, 42, 0.9);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .aeo-nav-brand {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #f1f5f9;
+    }
+
+    .aeo-nav-links {
+        display: flex;
+        list-style: none;
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .aeo-nav-link-item span {
+        display: inline-block;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        color: #94a3b8;
+        border: 1px dashed rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+    }
+
+    .aeo-nav-cta-btn {
+        display: inline-block;
+        padding: 8px 18px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #ffffff;
+        background: linear-gradient(135deg, #f59e0b, #ef4444);
+        border-radius: 6px;
+    }
+
+    .aeo-nav-burger {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .aeo-nav-links,
+        .aeo-nav-cta-wrap {
+            display: none;
+        }
+        .aeo-nav-burger {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            span {
+                display: block;
+                width: 22px;
+                height: 2px;
+                background: #e2e8f0;
+                border-radius: 2px;
+            }
+        }
+    }
+}

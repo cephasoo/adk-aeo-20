@@ -1,0 +1,39 @@
+{
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/form",
+  "title": "AEO Form Builder",
+  "category": "design",
+  "icon": "feedback",
+  "description": "Customizable form builder with dark glassmorphism styling and focus glow animations.",
+  "supports": {
+    "html": false,
+    "align": true
+  },
+  "attributes": {
+    "formTitle": {
+      "type": "string",
+      "default": "Request a Tour"
+    },
+    "formSubtitle": {
+      "type": "string",
+      "default": "Fill out the form below and our agentic copilot will customize your demo."
+    },
+    "submitText": {
+      "type": "string",
+      "default": "Send Request"
+    },
+    "fields": {
+      "type": "array",
+      "default": [
+        { "id": "name", "type": "text", "label": "Full Name", "placeholder": "Jane Doe", "required": true },
+        { "id": "email", "type": "email", "label": "Work Email", "placeholder": "jane@company.com", "required": true },
+        { "id": "use_case", "type": "select", "label": "Primary Use Case", "placeholder": "", "required": true, "options": "Marketing Automation, SEO Content Audit, Lead Generation" },
+        { "id": "message", "type": "textarea", "label": "Briefly describe your goals", "placeholder": "Tell us what you want to automate...", "required": false }
+      ]
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewScript": "file:./view.js"
+}

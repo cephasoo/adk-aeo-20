@@ -1,0 +1,194 @@
+/* ============================================================
+   AEO Footer Menu — Glassmorphic Multi-Column Grid
+   ============================================================ */
+
+// Design tokens
+$footer-bg: rgba(15, 23, 42, 0.85);
+$footer-blur: 14px;
+$footer-border-top: 1px solid rgba(255, 255, 255, 0.08);
+$text-primary: #f1f5f9;
+$text-secondary: #94a3b8;
+$text-link: #cbd5e1;
+$text-link-hover: #ffffff;
+$accent-gradient: linear-gradient(90deg, #f59e0b 0%, #ef4444 50%, #3b82f6 100%);
+$transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+// ── Wrapper & Glowing Top Border ─────────────────────────────
+.wp-block-aeo-footer {
+    position: relative;
+    background: $footer-bg;
+    backdrop-filter: blur($footer-blur);
+    -webkit-backdrop-filter: blur($footer-blur);
+    border-top: $footer-border-top;
+    padding: 64px 40px 32px 40px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: $text-secondary;
+    overflow: hidden;
+
+    // The glowing top divider gradient line
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: $accent-gradient;
+        opacity: 0.85;
+    }
+}
+
+// ── Multi-Column Grid ────────────────────────────────────────
+.aeo-footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 48px;
+    max-width: 1200px;
+    margin: 0 auto 48px auto;
+
+    @media (max-width: 968px) {
+        grid-template-columns: 1.5fr 1fr 1fr;
+        gap: 32px;
+    }
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+}
+
+// ── Column Styling ───────────────────────────────────────────
+.footer-col {
+    h4 {
+        color: $text-primary;
+        font-size: 1rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 0;
+        margin-bottom: 24px;
+    }
+
+    ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    a {
+        color: $text-link;
+        text-decoration: none;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: color $transition-base, transform $transition-base;
+        display: inline-block;
+
+        &:hover,
+        &:focus-visible {
+            color: $text-link-hover;
+            transform: translateX(4px);
+        }
+    }
+}
+
+// ── Brand / Monogram Column ──────────────────────────────────
+.brand-col {
+    .brand-logo {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $text-primary;
+        margin-top: 0;
+        margin-bottom: 16px;
+        letter-spacing: -0.02em;
+    }
+
+    .brand-desc {
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: $text-secondary;
+        max-width: 320px;
+        margin: 0;
+    }
+}
+
+// ── Bottom Section ───────────────────────────────────────────
+.aeo-footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+
+    .copyright {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.4);
+        margin: 0;
+    }
+}
+
+// ── Pulsing System Status Badge ──────────────────────────────
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    padding: 6px 14px;
+    border-radius: 9999px;
+    transition: background 0.3s ease;
+
+    &:hover {
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .pulse-indicator {
+        display: block;
+        width: 8px;
+        height: 8px;
+        background-color: #10b981;
+        border-radius: 50%;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: aeoStatusPulse 2s infinite;
+    }
+
+    .status-txt {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #34d399;
+        letter-spacing: 0.01em;
+    }
+}
+
+@keyframes aeoStatusPulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+// ── Hide default theme footers ───────────────────────────────
+body:has(.wp-block-aeo-footer) {
+    footer.wp-block-template-part,
+    .wp-block-footer {
+        display: none !important;
+    }
+}

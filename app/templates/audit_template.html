@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO & AEO Audit Report - Post #{{ wp_post_id }}</title>
+    <!-- Modern Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --bg-container: rgba(17, 24, 39, 0.75);
+            --bg-card: rgba(31, 41, 55, 0.4);
+
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --text-cyan: #38bdf8;
+
+            --accent-error: #f43f5e;
+            --accent-warning: #f59e0b;
+            --accent-pass: #10b981;
+
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-error: rgba(244, 63, 94, 0.2);
+            --border-warning: rgba(245, 158, 11, 0.2);
+            --border-pass: rgba(16, 185, 129, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 60px 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, #0b0f19 0%, #111827 100%);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 28px;
+            padding: 50px;
+            box-shadow:
+                0 30px 60px -15px rgba(0, 0, 0, 0.5),
+                0 0 50px -10px rgba(59, 130, 246, 0.15);
+        }
+
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 35px;
+            margin-bottom: 45px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            margin: 0 0 12px 0;
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .header-meta {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .header-meta a {
+            color: var(--text-cyan);
+            text-decoration: none;
+            word-break: break-all;
+            font-weight: 600;
+            border-bottom: 1px dashed rgba(56, 189, 248, 0.4);
+        }
+
+        .header-meta a:hover {
+            color: #7dd3fc;
+            border-bottom-style: solid;
+        }
+
+        .timestamp {
+            background-color: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            letter-spacing: 0.02em;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin-bottom: 50px;
+        }
+
+        .meta-card {
+            background-color: var(--bg-card);
+            border-radius: 22px;
+            padding: 28px 24px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .meta-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .meta-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(56, 189, 248, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Gradient Highlights for Cards */
+        .card-blue::before { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+        .card-purple::before { background: linear-gradient(90deg, #7c3aed, #c084fc); }
+        .card-amber::before { background: linear-gradient(90deg, #d97706, #fbbf24); }
+        .card-emerald::before { background: linear-gradient(90deg, #059669, #34d399); }
+
+        .meta-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            color: var(--text-muted);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .meta-card p {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .card-blue p { color: #38bdf8; text-shadow: 0 0 12px rgba(56, 189, 248, 0.2); }
+        .card-purple p { color: #c084fc; text-shadow: 0 0 12px rgba(192, 132, 252, 0.2); }
+        .card-amber p { color: #fbbf24; text-shadow: 0 0 12px rgba(251, 191, 36, 0.2); }
+        .card-emerald p { color: #34d399; text-shadow: 0 0 12px rgba(52, 211, 153, 0.2); }
+
+        section {
+            border-radius: 24px;
+            padding: 35px;
+            margin-bottom: 35px;
+            border: 1px solid var(--border-color);
+            background-color: rgba(30, 41, 67, 0.15);
+        }
+
+        section h2 {
+            font-family: 'Outfit', sans-serif;
+            margin-top: 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 18px;
+            margin-bottom: 25px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            position: relative;
+            padding: 20px 24px 20px 32px; /* Indent to make room for left-hand tag */
+            margin-bottom: 16px;
+            border-radius: 16px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            font-size: 0.98rem;
+            line-height: 1.6;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            overflow: hidden; /* Round the inner left tag to match card corners */
+        }
+
+        li:hover {
+            transform: translateY(-2px);
+            background-color: rgba(31, 41, 55, 0.55);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Left-hand severity tag using pseudo-element */
+        li::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+            border-radius: 16px 0 0 16px;
+        }
+
+        /* Custom Strong styling inside list elements */
+        li strong {
+            font-weight: 700;
+            color: #ffffff; /* High contrast text */
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin-right: 4px;
+        }
+
+        .errors {
+            border-color: var(--border-error);
+            box-shadow: inset 0 0 20px rgba(244, 63, 94, 0.03);
+        }
+        .errors h2 { color: var(--accent-error); }
+        .errors li {
+            border-color: rgba(244, 63, 94, 0.25);
+            box-shadow: 0 4px 15px rgba(244, 63, 94, 0.05);
+        }
+        .errors li:hover {
+            border-color: rgba(244, 63, 94, 0.45);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25), 0 0 15px rgba(244, 63, 94, 0.15);
+        }
+        .errors li::after {
+            background: linear-gradient(to bottom, #ff4a5a, var(--accent-error));
+            box-shadow: 3px 0 12px rgba(244, 63, 94, 0.4);
+        }
+        .errors li::before {
+            content: "✦";
+            color: var(--accent-error);
+            font-weight: bold;
+            font-size: 1.1rem;
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        .warnings {
+            border-color: var(--border-warning);
+            box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.03);
+        }
+        .warnings h2 { color: var(--accent-warning); }
+        .warnings li {
+            border-color: rgba(245, 158, 11, 0.25);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.05);
+        }
+        .warnings li:hover {
+            border-color: rgba(245, 158, 11, 0.45);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25), 0 0 15px rgba(245, 158, 11, 0.15);
+        }
+        .warnings li::after {
+            background: linear-gradient(to bottom, #fbbf24, var(--accent-warning));
+            box-shadow: 3px 0 12px rgba(245, 158, 11, 0.4);
+        }
+        .warnings li::before {
+            content: "✦";
+            color: var(--accent-warning);
+            font-weight: bold;
+            font-size: 1.1rem;
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        .passes {
+            border-color: var(--border-pass);
+            box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.03);
+        }
+        .passes h2 { color: var(--accent-pass); }
+        .passes li {
+            border-color: rgba(16, 185, 129, 0.25);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.05);
+        }
+        .passes li:hover {
+            border-color: rgba(16, 185, 129, 0.45);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25), 0 0 15px rgba(16, 185, 129, 0.15);
+        }
+        .passes li::after {
+            background: linear-gradient(to bottom, #34d399, var(--accent-pass));
+            box-shadow: 3px 0 12px rgba(16, 185, 129, 0.4);
+        }
+        .passes li::before {
+            content: "✦";
+            color: var(--accent-pass);
+            font-weight: bold;
+            font-size: 1.1rem;
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        .empty-state {
+            color: var(--text-muted);
+            font-style: italic;
+            margin: 0;
+            padding: 15px;
+            background-color: rgba(15, 23, 42, 0.2);
+            border-radius: 12px;
+            border: 1px dashed var(--border-color);
+            text-align: center;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            letter-spacing: 0.01em;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px;
+                border-radius: 20px;
+            }
+            body {
+                padding: 20px 10px;
+            }
+            .header-title h1 {
+                font-size: 2.2rem;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .meta-grid {
+                grid-template-columns: 1fr;
+            }
+            section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <h1>SEO & AEO Audit Report</h1>
+                <div class="header-meta">
+                    Audited URL: <a href="{{ page_url }}" target="_blank">{{ page_url }}</a> | Page ID: {{ wp_post_id }}
+                </div>
+            </div>
+            <div class="timestamp">
+                {{ timestamp }}
+            </div>
+        </header>
+
+        <div class="meta-grid">
+            <div class="meta-card card-blue">
+                <h3>Word Count</h3>
+                <p>{{ metrics.word_count }}</p>
+            </div>
+            <div class="meta-card card-purple">
+                <h3>Images Scanned</h3>
+                <p>{{ metrics.images_count }}</p>
+            </div>
+            <div class="meta-card card-amber">
+                <h3>Readability</h3>
+                <p style="font-size: 1.4rem; padding-top: 8px; font-weight: 700;">{{ "%.1f"|format(metrics.avg_sentence_len) }} <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; display: block; margin-top: 2px;">words/sentence</span></p>
+            </div>
+            <div class="meta-card card-emerald">
+                <h3>Topical Alignment</h3>
+                <p>{{ "%.0f"|format(metrics.semantic_match_score) }}%</p>
+            </div>
+        </div>
+
+        <section class="errors">
+            <h2>❌ Critical Errors ({{ errors|length }})</h2>
+            {% if errors %}
+                <ul>
+                {% for err in errors %}
+                    <li>{{ err }}</li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">No critical errors found.</p>
+            {% endif %}
+        </section>
+
+        <section class="warnings">
+            <h2>⚠️ Technical Warnings ({{ warnings|length }})</h2>
+            {% if warnings %}
+                <ul>
+                {% for wrn in warnings %}
+                    <li>{{ wrn }}</li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">No technical warnings found.</p>
+            {% endif %}
+        </section>
+
+        <section class="passes">
+            <h2>✅ Passed Checks ({{ passes|length }})</h2>
+            {% if passes %}
+                <ul>
+                {% for p in passes %}
+                    <li>{{ p }}</li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-state">No checks passed.</p>
+            {% endif %}
+        </section>
+
+        <footer>
+            <p>Generated by Gutenberg AEO Copilot Skill | {{ page_url }} | This report will automatically expire in 30 days.</p>
+        </footer>
+    </div>
+</body>
+</html>

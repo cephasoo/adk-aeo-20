@@ -1,0 +1,134 @@
+/* ============================================================
+   AEO Case Study Metrics Grid Styles
+   ============================================================ */
+
+$card-bg: rgba(30, 41, 59, 0.65);
+$card-border: 1px solid rgba(255, 255, 255, 0.08);
+$card-blur: 12px;
+$color-green: #10b981;
+$color-amber: #f59e0b;
+$color-crimson: #ef4444;
+$transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+.wp-block-aeo-metrics-grid {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 0 16px;
+    box-sizing: border-box;
+}
+
+.aeo-metrics-grid-container {
+    display: grid;
+    gap: 24px;
+    width: 100%;
+
+    // Responsive columns
+    &.cols-1 { grid-template-columns: 1fr; }
+    &.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    &.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    &.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+    @media (max-width: 992px) {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    @media (max-width: 576px) {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+}
+
+// ── Metrics Card ─────────────────────────────────────────────
+.aeo-metric-card {
+    background: $card-bg;
+    backdrop-filter: blur($card-blur);
+    -webkit-backdrop-filter: blur($card-blur);
+    border: $card-border;
+    border-radius: 12px;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    transition: transform $transition-base, border-color $transition-base, box-shadow $transition-base;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+
+    &:hover {
+        transform: translateY(-4px);
+        border-color: rgba(245, 158, 11, 0.4);
+        box-shadow: 0 8px 30px rgba(245, 158, 11, 0.15);
+    }
+}
+
+// Card Status Badge
+.aeo-metric-badge-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 6px 12px;
+    margin-bottom: 20px;
+
+    .badge-dot {
+        width: 6px;
+        height: 6px;
+        background-color: $color-green;
+        border-radius: 50%;
+        box-shadow: 0 0 8px $color-green;
+        display: inline-block;
+        animation: aeo-pulsing-dot 2s infinite ease-in-out;
+    }
+
+    .badge-text {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #cbd5e1;
+        letter-spacing: 0.08em;
+    }
+}
+
+// Large Stat Value
+.aeo-metric-value-text {
+    font-size: 2.75rem;
+    font-weight: 900;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+
+    // Soft glow text gradient
+    background: linear-gradient(135deg, #ffffff 40%, #ffd085 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 24px rgba(245, 158, 11, 0.15);
+}
+
+// Label text
+.aeo-metric-label-text {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.4;
+    margin: 0;
+}
+
+// ── Pulsing Keyframes ────────────────────────────────────────
+@keyframes aeo-pulsing-dot {
+    0% {
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+    }
+    100% {
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}

@@ -1,0 +1,170 @@
+/* ============================================================
+   AEO Agentic Workflow Timeline — Responsive Layout
+   ============================================================ */
+
+$card-bg: rgba(30, 41, 59, 0.65);
+$card-border: 1px solid rgba(255, 255, 255, 0.08);
+$card-blur: 12px;
+$color-amber: #f59e0b;
+$color-crimson: #ef4444;
+$transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+.wp-block-aeo-workflow {
+    max-width: 1080px;
+    margin: 60px auto;
+    padding: 0 16px;
+    box-sizing: border-box;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+// ── Timeline Grid ────────────────────────────────────────────
+.aeo-workflow-timeline {
+    display: grid;
+    gap: 36px;
+    position: relative;
+    width: 100%;
+
+    // Layout Columns based on steps count
+    &.cols-1 {
+        grid-template-columns: 1fr;
+        &::before { display: none; }
+    }
+    &.cols-2 { grid-template-columns: repeat(2, 1fr); }
+    &.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    &.cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+    // Connecting horizontal line
+    &::before {
+        content: '';
+        position: absolute;
+        top: 24px;
+        left: 8%;
+        right: 8%;
+        height: 2px;
+        background: linear-gradient(90deg,
+            rgba(245, 158, 11, 0.05) 0%,
+            rgba(245, 158, 11, 0.7) 50%,
+            rgba(245, 158, 11, 0.05) 100%
+        );
+        z-index: 1;
+
+        @media (max-width: 768px) {
+            display: none; // Disable horizontal line on stack
+        }
+    }
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr !important;
+        gap: 28px;
+        padding-left: 24px;
+
+        // Vertical connecting line
+        &::after {
+            content: '';
+            position: absolute;
+            top: 24px;
+            bottom: 24px;
+            left: 24px;
+            width: 2px;
+            background: linear-gradient(180deg,
+                rgba(245, 158, 11, 0.1) 0%,
+                rgba(245, 158, 11, 0.7) 50%,
+                rgba(245, 158, 11, 0.1) 100%
+            );
+            z-index: 1;
+        }
+    }
+}
+
+// ── Step Item Card ────────────────────────────────────────────
+.aeo-workflow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    box-sizing: border-box;
+
+    @media (max-width: 768px) {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 20px;
+    }
+}
+
+// Timeline Node Circle
+.aeo-step-node {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #0f172a;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #94a3b8;
+    margin-bottom: 24px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    transition: transform $transition-base, border-color $transition-base, box-shadow $transition-base, color $transition-base;
+    cursor: pointer;
+    flex-shrink: 0;
+
+    @media (max-width: 768px) {
+        margin-bottom: 0;
+    }
+
+    // Active state glow
+    &.active {
+        border-color: $color-amber;
+        color: #ffffff;
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+        transform: scale(1.08);
+    }
+}
+
+// Glassmorphic Details Card
+.aeo-step-card {
+    background: $card-bg;
+    backdrop-filter: blur($card-blur);
+    -webkit-backdrop-filter: blur($card-blur);
+    border: $card-border;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    transition: transform $transition-base, border-color $transition-base, box-shadow $transition-base;
+    width: 100%;
+    box-sizing: border-box;
+
+    &:hover {
+        transform: translateY(-2px);
+    }
+
+    // Active card highlighting
+    &.active {
+        border-color: rgba(245, 158, 11, 0.35);
+        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.12);
+
+        h5 {
+            color: $color-amber;
+        }
+    }
+
+    h5 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #ffffff;
+        margin-top: 0;
+        margin-bottom: 8px;
+        transition: color $transition-base;
+    }
+
+    p {
+        font-size: 0.88rem;
+        font-weight: 500;
+        line-height: 1.5;
+        color: #cbd5e1;
+        margin: 0;
+    }
+}

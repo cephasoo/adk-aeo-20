@@ -1,0 +1,244 @@
+/* ============================================================
+   AEO Form Builder — Glassmorphic Theme & Focus Glows
+   ============================================================ */
+
+// Design tokens
+$form-bg: rgba(30, 41, 59, 0.7);
+$form-blur: 16px;
+$form-border: 1px solid rgba(255, 255, 255, 0.08);
+$input-bg: rgba(15, 23, 42, 0.6);
+$input-border: 1px solid rgba(255, 255, 255, 0.1);
+$input-focus-border: #f59e0b;
+$input-focus-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+$text-title: #f8fafc;
+$text-subtitle: #94a3b8;
+$text-label: #cbd5e1;
+$transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+// ── Form Wrapper ─────────────────────────────────────────────
+.wp-block-aeo-form {
+    max-width: 680px;
+    margin: 40px auto;
+    background: $form-bg;
+    backdrop-filter: blur($form-blur);
+    -webkit-backdrop-filter: blur($form-blur);
+    border: $form-border;
+    border-radius: 16px;
+    padding: 48px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #f1f5f9;
+
+    @media (max-width: 768px) {
+        padding: 32px 24px;
+        margin: 20px auto;
+        border-radius: 12px;
+    }
+}
+
+// ── Headers ──────────────────────────────────────────────────
+.aeo-form-header {
+    text-align: center;
+    margin-bottom: 36px;
+
+    h3 {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: $text-title;
+        margin-top: 0;
+        margin-bottom: 12px;
+        letter-spacing: -0.02em;
+    }
+
+    p {
+        font-size: 1.05rem;
+        line-height: 1.5;
+        color: $text-subtitle;
+        margin: 0;
+    }
+
+    @media (max-width: 768px) {
+        margin-bottom: 28px;
+        h3 { font-size: 1.5rem; }
+        p { font-size: 0.95rem; }
+    }
+}
+
+// ── Fields & Group layouts ───────────────────────────────────
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 24px;
+
+    label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: $text-label;
+        letter-spacing: 0.01em;
+
+        .required-star {
+            color: #ef4444;
+            margin-left: 4px;
+        }
+    }
+}
+
+// ── Inputs Base ──────────────────────────────────────────────
+.wp-block-aeo-form {
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    textarea,
+    select {
+        width: 100%;
+        background-color: $input-bg;
+        border: $input-border;
+        border-radius: 8px;
+        padding: 14px 16px;
+        font-size: 0.95rem;
+        color: #ffffff;
+        font-family: inherit;
+        box-sizing: border-box;
+        transition: border-color $transition-base, box-shadow $transition-base, background $transition-base;
+
+        &::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        &:focus {
+            outline: none;
+            border-color: $input-focus-border;
+            box-shadow: $input-focus-shadow;
+            background-color: rgba(15, 23, 42, 0.85);
+        }
+    }
+
+    textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    select {
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        background-size: 16px;
+        padding-right: 40px;
+        cursor: pointer;
+    }
+
+    // File Upload styling
+    input[type="file"] {
+        background: transparent;
+        border: 1px dashed rgba(255, 255, 255, 0.15);
+        padding: 16px;
+        border-radius: 8px;
+        color: $text-subtitle;
+        font-size: 0.9rem;
+        cursor: pointer;
+        width: 100%;
+        box-sizing: border-box;
+        transition: border-color $transition-base;
+
+        &:hover {
+            border-color: rgba(245, 158, 11, 0.4);
+        }
+
+        &::file-selector-button {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            color: #ffffff;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 12px;
+            cursor: pointer;
+            transition: background $transition-base, border-color $transition-base;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.15);
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+        }
+    }
+}
+
+// ── Submit Button ────────────────────────────────────────────
+.form-submit-wrap {
+    margin-top: 32px;
+}
+
+.aeo-form-submit-btn {
+    width: 100%;
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+    cursor: pointer;
+    transition: transform $transition-base, box-shadow $transition-base;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 28px rgba(245, 158, 11, 0.45);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    // Loading/Spinner state
+    &.loading {
+        opacity: 0.8;
+        cursor: not-allowed;
+        pointer-events: none;
+
+        &::after {
+            content: '';
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: aeoSubmitSpinner 0.8s linear infinite;
+        }
+    }
+}
+
+@keyframes aeoSubmitSpinner {
+    to { transform: rotate(360deg); }
+}
+
+// ── Feedback Banner ──────────────────────────────────────────
+.aeo-form-alert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-top: 24px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #34d399;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    transform: translateY(0);
+    opacity: 1;
+
+    .alert-icon {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+    }
+}

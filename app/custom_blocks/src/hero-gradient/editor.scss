@@ -1,0 +1,32 @@
+.wp-block-aeo-hero-gradient {
+    background: #1e293b;
+    border: none;
+    padding: 30px;
+    border-radius: 8px;
+    color: #ffffff;
+
+    h1 {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        padding: 5px;
+        border-radius: 4px;
+        color: #ffffff;
+    }
+
+    .aeo-hero-gradient-subtitle {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        padding: 5px;
+        border-radius: 4px;
+        color: #94a3b8;
+    }
+
+    .aeo-hero-gradient-cta-btn {
+        display: inline-block;
+        background-color: #3b82f6;
+        color: #ffffff;
+        padding: 10px 20px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+}

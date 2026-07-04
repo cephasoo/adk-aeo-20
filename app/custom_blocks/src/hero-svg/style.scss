@@ -1,0 +1,145 @@
+.wp-block-aeo-hero-svg {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #ffffff;
+    padding: 100px 40px;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 12px;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    margin-bottom: 30px;
+    position: relative;
+    overflow: hidden;
+
+    .aeo-hero-svg-pattern,
+    .aeo-hero-svg-pattern-edit {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        pointer-events: none;
+
+        .banana-vector-1 {
+            animation: float-banana-1 12s ease-in-out infinite;
+        }
+
+        .banana-vector-2 {
+            animation: float-banana-2 15s ease-in-out infinite;
+        }
+    }
+
+    @keyframes float-banana-1 {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(15px, -15px) rotate(15deg); }
+        100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
+    @keyframes float-banana-2 {
+        0% { transform: translate(0, 0) rotate(0deg); }
+        50% { transform: translate(-10px, 15px) rotate(-10deg); }
+        100% { transform: translate(0, 0) rotate(0deg); }
+    }
+
+    .aeo-hero-gradient-header {
+        position: relative;
+        z-index: 2;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .aeo-hero-gradient-dynamic-title {
+        color: #ffffff !important;
+        font-size: 2.8rem !important;
+        font-weight: 800 !important;
+        line-height: 1.2 !important;
+        margin-top: 0 !important;
+        margin-bottom: 20px !important;
+        text-align: center !important;
+    }
+
+    &.alignfull {
+        border-radius: 0;
+    }
+
+    h1 {
+        font-size: 2.8rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-bottom: 20px;
+        color: #ffffff;
+    }
+
+    .aeo-hero-gradient-subtitle {
+        color: #94a3b8;
+        font-size: 1.25rem;
+        line-height: 1.6;
+        margin-bottom: 30px;
+    }
+
+    .aeo-hero-gradient-cta {
+        margin-top: 20px;
+    }
+
+    .aeo-hero-gradient-cta-btn {
+        display: inline-block;
+        background-color: #3b82f6;
+        color: #ffffff;
+        padding: 12px 30px;
+        font-weight: 600;
+        text-decoration: none;
+        border-radius: 6px;
+        transition: background-color 0.2s ease-in-out;
+
+        &:hover {
+            background-color: #2563eb;
+        }
+    }
+
+    // Responsive Mobile Design Overrides
+    @media (max-width: 768px) {
+        padding: 60px 20px;
+        min-height: 300px;
+
+        h1, .aeo-hero-gradient-dynamic-title {
+            font-size: 2rem !important;
+            line-height: 1.3 !important;
+        }
+
+        .aeo-hero-gradient-subtitle {
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .aeo-hero-gradient-cta-btn {
+            padding: 10px 24px;
+            font-size: 0.95rem;
+        }
+    }
+}
+
+// Spacing overrides when a custom Hero SVG is present on the page (non-hacky layout flush)
+body:has(.wp-block-aeo-hero-svg) {
+    // Strip theme container margins and padding to allow clean flush to menu border
+    main,
+    main.wp-block-group,
+    main > .wp-block-group,
+    main .wp-block-group {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .entry-content,
+    .wp-block-post-content {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .wp-block-aeo-hero-svg {
+        margin-top: 0 !important;
+    }
+}

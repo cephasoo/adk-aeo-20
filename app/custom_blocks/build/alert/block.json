@@ -1,0 +1,30 @@
+{
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/alert",
+  "title": "AEO Alert Status",
+  "category": "design",
+  "icon": "warning",
+  "description": "Premium glassmorphic status alert banners with success, info, warning, and error states.",
+  "supports": {
+    "html": false,
+    "align": true
+  },
+  "attributes": {
+    "type": {
+      "type": "string",
+      "default": "info"
+    },
+    "message": {
+      "type": "string",
+      "default": "System Alert: All agent workflows operational."
+    },
+    "dismissible": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewScript": "file:./view.js"
+}

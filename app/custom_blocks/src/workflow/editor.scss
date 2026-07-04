@@ -1,0 +1,137 @@
+/* Editor-only styles for AEO Agentic Workflow block */
+.wp-block-aeo-workflow {
+    background: #0f172a;
+    border: none;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+    font-family: 'Inter', sans-serif;
+
+    .aeo-workflow-builder-wrapper {
+        h4 {
+            color: #ffffff;
+            font-size: 1.2rem;
+            margin: 0 0 4px 0;
+        }
+
+        .builder-help-text {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin: 0 0 24px 0;
+        }
+    }
+
+    .aeo-workflow-editor-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .aeo-workflow-step-edit-card {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 20px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        .remove-step-btn {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            color: #ef4444;
+            font-size: 1.25rem;
+            cursor: pointer;
+            font-weight: 700;
+            line-height: 1;
+
+            &:hover {
+                color: #f87171;
+            }
+        }
+
+        .edit-step-header {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+
+            .edit-step-number {
+                width: 50px;
+                input {
+                    background: rgba(15, 23, 42, 0.6);
+                    border: 1px solid rgba(245, 158, 11, 0.3);
+                    color: #ffd085;
+                    font-weight: 800;
+                    text-align: center;
+                    border-radius: 6px;
+                }
+            }
+
+            .edit-step-title {
+                flex-grow: 1;
+                input {
+                    background: transparent;
+                    border: none;
+                    border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+                    color: #ffffff;
+                    font-weight: 700;
+                    font-size: 1.05rem;
+                    border-radius: 0;
+
+                    &:focus {
+                        border-bottom: 1px solid #ffd085;
+                        box-shadow: none;
+                    }
+                }
+            }
+        }
+
+        .edit-step-desc {
+            textarea {
+                background: transparent;
+                border: none;
+                border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+                color: #cbd5e1;
+                font-size: 0.88rem;
+                line-height: 1.5;
+                border-radius: 0;
+                resize: vertical;
+
+                &:focus {
+                    border-bottom: 1px solid #cbd5e1;
+                    box-shadow: none;
+                }
+            }
+        }
+    }
+
+    .add-workflow-step-trigger {
+        border: 2px dashed rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 80px;
+        cursor: pointer;
+        color: #94a3b8;
+        font-weight: 600;
+        transition: border-color 0.2s, background 0.2s, color 0.2s;
+
+        &:hover {
+            border-color: rgba(245, 158, 11, 0.6);
+            background: rgba(245, 158, 11, 0.04);
+            color: #ffffff;
+        }
+    }
+
+    .color-palette-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #e2e8f0;
+        display: block;
+        margin-bottom: 8px;
+    }
+}

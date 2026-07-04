@@ -1,0 +1,27 @@
+/* Editor-only styles for the AEO ROI Calculator block */
+.wp-block-aeo-calculator {
+    background: #0f172a;
+    border: none;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+
+    .aeo-calc-container {
+        background: rgba(30, 41, 59, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 32px 24px;
+    }
+
+    .calc-sliders-wrap {
+        input[type="range"] {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    }
+
+    .calc-cta-btn {
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+}

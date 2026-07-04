@@ -1,0 +1,132 @@
+/* Editor-only styles for AEO Metrics Grid builder */
+.wp-block-aeo-metrics-grid {
+    background: #0f172a;
+    border: none;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+    font-family: 'Inter', sans-serif;
+
+    .aeo-metrics-builder-wrapper {
+        h4 {
+            color: #ffffff;
+            font-size: 1.2rem;
+            margin: 0 0 4px 0;
+        }
+
+        .builder-help-text {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin: 0 0 24px 0;
+        }
+    }
+
+    .aeo-metrics-grid {
+        display: grid;
+        gap: 20px;
+        box-sizing: border-box;
+
+        &.cols-1 { grid-template-columns: 1fr; }
+        &.cols-2 { grid-template-columns: repeat(2, 1fr); }
+        &.cols-3 { grid-template-columns: repeat(3, 1fr); }
+        &.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .aeo-metric-card-edit {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 20px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        .remove-card-btn {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            color: #ef4444;
+            font-size: 1.25rem;
+            cursor: pointer;
+            font-weight: 700;
+            line-height: 1;
+
+            &:hover {
+                color: #f87171;
+            }
+        }
+
+        // Sub-elements text controls overrides
+        .components-text-control {
+            margin-bottom: 0;
+        }
+
+        .edit-metric-badge input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-align: center;
+            border-radius: 15px;
+            height: 28px;
+            padding: 2px 8px;
+        }
+
+        .edit-metric-value input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            font-size: 1.75rem;
+            font-weight: 800;
+            text-align: center;
+            padding: 4px 0;
+            border-radius: 0;
+
+            &:focus {
+                border-bottom: 1px solid #ffd085;
+                box-shadow: none;
+            }
+        }
+
+        .edit-metric-label input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+            color: #cbd5e1;
+            font-size: 0.85rem;
+            text-align: center;
+            border-radius: 0;
+            padding: 4px 0;
+
+            &:focus {
+                border-bottom: 1px solid #cbd5e1;
+                box-shadow: none;
+            }
+        }
+    }
+
+    .add-metric-card-trigger {
+        border: 2px dashed rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 140px;
+        cursor: pointer;
+        color: #94a3b8;
+        font-weight: 600;
+        transition: border-color 0.2s, background 0.2s, color 0.2s;
+
+        &:hover {
+            border-color: rgba(59, 130, 246, 0.6);
+            background: rgba(59, 130, 246, 0.04);
+            color: #ffffff;
+        }
+    }
+}

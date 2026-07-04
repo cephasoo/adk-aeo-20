@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/faq",
+  "title": "AEO FAQ Accordion",
+  "category": "design",
+  "icon": "feedback",
+  "description": "Semantic accordion block (using HTML5 details and summary) optimized for AEO/SEO featured snippets.",
+  "supports": {
+    "html": false,
+    "align": true
+  },
+  "attributes": {
+    "question": {
+      "type": "string",
+      "source": "html",
+      "selector": "summary",
+      "default": "Frequently Asked Question"
+    },
+    "answer": {
+      "type": "string",
+      "source": "html",
+      "selector": "div.aeo-faq-answer-content",
+      "default": "This is the answer to the question."
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css"
+}

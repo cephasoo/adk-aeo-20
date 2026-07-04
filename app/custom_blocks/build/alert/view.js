@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".aeo-alert-banner").forEach(e=>{const t=e.querySelector(".alert-close");t&&t.addEventListener("click",()=>{e.style.opacity="0",e.style.transform="translateY(10px)",setTimeout(()=>{e.remove()},400)})})});

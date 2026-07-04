@@ -1,0 +1,33 @@
+.wp-block-aeo-faq {
+    background-color: #f8fafc;
+    border: none;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+
+    .aeo-faq-editor-label {
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: #64748b;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .aeo-faq-editor-question {
+        font-weight: bold;
+        font-size: 1.1rem;
+        border: 1px dashed #cbd5e1;
+        padding: 5px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        background: #ffffff;
+    }
+
+    .aeo-faq-editor-answer {
+        font-size: 1rem;
+        border: 1px dashed #cbd5e1;
+        padding: 5px;
+        border-radius: 4px;
+        background: #ffffff;
+    }
+}

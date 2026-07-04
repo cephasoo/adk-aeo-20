@@ -1,0 +1,50 @@
+{
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/metrics-grid",
+  "title": "AEO Metrics Grid",
+  "category": "design",
+  "icon": "grid-view",
+  "description": "A responsive grid of glassmorphic success metrics cards designed to display quantifiable trust signals.",
+  "supports": {
+    "html": false,
+    "align": true
+  },
+  "attributes": {
+    "columns": {
+      "type": "number",
+      "default": 3
+    },
+    "metrics": {
+      "type": "array",
+      "default": [
+        {
+          "value": "+340%",
+          "label": "ROI Increase",
+          "badgeText": "Verified"
+        },
+        {
+          "value": "2.4M",
+          "label": "Automated Audits",
+          "badgeText": "Live"
+        },
+        {
+          "value": "12s",
+          "label": "Average Lead Response Time",
+          "badgeText": "Optimal"
+        }
+      ]
+    },
+    "outerBgColor": {
+      "type": "string",
+      "default": ""
+    },
+    "innerBgColor": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewScript": "file:./view.js"
+}

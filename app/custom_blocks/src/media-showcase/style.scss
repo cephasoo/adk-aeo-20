@@ -1,0 +1,301 @@
+/* ============================================================
+   AEO Testimonials & Media Showcase — Responsive Style
+   ============================================================ */
+
+$card-bg: rgba(30, 41, 59, 0.65);
+$card-border: 1px solid rgba(255, 255, 255, 0.08);
+$card-blur: 12px;
+$color-primary: #3b82f6;
+$transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+.wp-block-aeo-media-showcase {
+    max-width: 1080px;
+    margin: 60px auto;
+    padding: 60px 40px;
+    box-sizing: border-box;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #0b0f19 0%, #111827 100%);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    color: #ffffff;
+    transition: background-color 0.3s;
+
+    &.alignfull {
+        max-width: none;
+        border-radius: 0;
+        margin: 0;
+    }
+
+    &.alignwide {
+        max-width: 1320px;
+        margin: 60px auto;
+        padding: 60px 30px;
+    }
+
+    // ── Header Typography ─────────────────────────────────────────
+    .aeo-showcase-header {
+        text-align: center;
+        margin-bottom: 50px;
+
+        h2 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            margin: 0 0 12px 0;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #94a3b8;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+    }
+
+    // ── Testimonials Slider (Redesigned from Grid) ─────────────────
+    .aeo-showcase-slider-container {
+        position: relative;
+        width: 100%;
+        margin-bottom: 50px;
+    }
+
+    .aeo-showcase-grid {
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        gap: 24px;
+        scroll-behavior: smooth;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        padding: 10px 4px 20px 4px;
+        margin: 0;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
+    .slider-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        display: none; // Populated and toggled via JS
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        transition: background 0.2s, border-color 0.2s, transform 0.2s, opacity 0.2s;
+
+        svg {
+            width: 20px;
+            height: 20px;
+            stroke-width: 3px;
+            fill: none;
+        }
+
+        &:hover {
+            background: #1e293b;
+            border-color: #3b82f6;
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        &:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        &.prev-btn {
+            left: -22px;
+            @media (max-width: 1200px) {
+                left: 10px;
+            }
+        }
+
+        &.next-btn {
+            right: -22px;
+            @media (max-width: 1200px) {
+                right: 10px;
+            }
+        }
+    }
+
+    // ── Testimonial Card ──────────────────────────────────────────
+    .aeo-showcase-card {
+        background: $card-bg;
+        border: $card-border;
+        backdrop-filter: blur($card-blur);
+        -webkit-backdrop-filter: blur($card-blur);
+        border-radius: 14px;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        transition: transform $transition-base, border-color $transition-base, box-shadow $transition-base, background-color 0.3s;
+        box-sizing: border-box;
+
+        flex: 0 0 85%;
+        scroll-snap-align: start;
+
+        @media (min-width: 641px) {
+            flex: 0 0 calc(50% - 12px);
+        }
+
+        &:hover {
+            transform: translateY(-2px);
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.08);
+        }
+
+        // Quote section
+        .aeo-showcase-quote-wrap {
+            position: relative;
+            margin-bottom: 24px;
+
+            p.quote-text {
+                font-size: 1.05rem;
+                font-weight: 500;
+                line-height: 1.6;
+                color: #cbd5e1;
+                margin: 0;
+            }
+        }
+
+        // Expandable Story Section
+        .aeo-showcase-expandable-section {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), margin 0.35s;
+            margin-top: 0;
+
+            .expanded-quote-text {
+                font-size: 0.95rem;
+                font-weight: 500;
+                line-height: 1.6;
+                color: #94a3b8;
+                border-top: 1px solid rgba(255, 255, 255, 0.06);
+                padding-top: 16px;
+                margin: 0;
+            }
+        }
+
+        &.expanded {
+            .aeo-showcase-expandable-section {
+                max-height: 300px;
+                margin-top: 16px;
+            }
+
+            .expand-toggle-btn svg {
+                transform: rotate(180deg);
+            }
+        }
+
+        // Toggle Expand Button
+        .expand-toggle-btn {
+            background: transparent;
+            border: none;
+            color: $color-primary;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            padding: 8px 0;
+            margin-top: 8px;
+            outline: none;
+            width: fit-content;
+
+            svg {
+                width: 14px;
+                height: 14px;
+                transition: transform 0.3s;
+                fill: currentColor;
+            }
+
+            &:hover {
+                color: #60a5fa;
+            }
+        }
+
+        // Author details row
+        .aeo-showcase-author-wrap {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+
+            .avatar-img-wrap {
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                overflow: hidden;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                flex-shrink: 0;
+
+                img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+            }
+
+            .author-text-meta {
+                h6 {
+                    font-size: 0.98rem;
+                    font-weight: 700;
+                    color: #ffffff;
+                    margin: 0 0 2px 0;
+                }
+
+                span {
+                    font-size: 0.82rem;
+                    font-weight: 500;
+                    color: #64748b;
+                }
+            }
+        }
+    }
+
+    // ── Call To Action Button ─────────────────────────────────────
+    .aeo-showcase-cta-wrap {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .aeo-showcase-cta-btn {
+        display: inline-block;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: #ffffff;
+        text-decoration: none;
+        padding: 14px 28px;
+        border-radius: 9999px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        transition: transform 0.2s, box-shadow 0.2s;
+
+        &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+    }
+}

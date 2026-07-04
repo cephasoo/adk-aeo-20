@@ -1,0 +1,50 @@
+{
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/calculator",
+  "title": "AEO ROI Calculator",
+  "category": "design",
+  "icon": "calculator",
+  "description": "Interactive slider-based ROI calculator estimating time and financial savings from automation.",
+  "supports": {
+    "html": false,
+    "align": true
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "default": "Calculate Your Automation Savings"
+    },
+    "subtitle": {
+      "type": "string",
+      "default": "Adjust the parameters below to estimate your net annual ROI."
+    },
+    "hourlyRate": {
+      "type": "number",
+      "default": 85
+    },
+    "manualHours": {
+      "type": "number",
+      "default": 25
+    },
+    "multiplier": {
+      "type": "number",
+      "default": 0.8
+    },
+    "maintenanceCost": {
+      "type": "number",
+      "default": 2500
+    },
+    "ctaText": {
+      "type": "string",
+      "default": "Get Started with Automation"
+    },
+    "ctaUrl": {
+      "type": "string",
+      "default": "#aeo-contact-section"
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewScript": "file:./view.js"
+}

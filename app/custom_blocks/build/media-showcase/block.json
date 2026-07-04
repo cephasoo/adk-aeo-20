@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "aeo-custom-blocks/media-showcase",
+  "title": "AEO Testimonials & Media Showcase",
+  "category": "design",
+  "icon": "format-gallery",
+  "description": "SEO-optimized testimonials grid combining clean typography, CTAs, custom background colors, and lazy-loaded avatars.",
+  "supports": {
+    "html": false,
+    "align": true
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "default": "What Our Clients Say"
+    },
+    "subtitle": {
+      "type": "string",
+      "default": "Proven results across next-generation search and answer engines."
+    },
+    "ctaText": {
+      "type": "string",
+      "default": "Read Case Studies"
+    },
+    "ctaUrl": {
+      "type": "string",
+      "default": "#"
+    },
+    "outerBgColor": {
+      "type": "string",
+      "default": ""
+    },
+    "innerBgColor": {
+      "type": "string",
+      "default": ""
+    },
+    "testimonials": {
+      "type": "array",
+      "default": [
+        {
+          "quote": "The agentic automation pipeline saved us over 40 hours a week and increased our visibility on search engines by 340%.",
+          "expandedQuote": "We were initially skeptical about transitioning to an AI-driven content pipeline, but the results speak for themselves. The system seamlessly indexes fresh research schemas and maintains zero layout shift.",
+          "author": "Sarah Jenkins",
+          "role": "Director of Growth, S&P Global",
+          "imageUrl": "",
+          "imageAlt": "Sarah Jenkins portrait",
+          "authorUrl": "https://www.linkedin.com/in/sarah-jenkins-placeholder",
+          "companyUrl": "https://www.spglobal.com"
+        },
+        {
+          "quote": "Our lead response time dropped to under 12 seconds with the custom AEO Form Builder integrations.",
+          "expandedQuote": "The lead capture pipeline instantly routes submissions to our sales desk. High contrast and clean accessibility ensure we capture every click without cluttering our landing pages.",
+          "author": "David Chen",
+          "role": "VP of Operations, remote.co",
+          "imageUrl": "",
+          "imageAlt": "David Chen portrait",
+          "authorUrl": "https://www.linkedin.com/in/david-chen-placeholder",
+          "companyUrl": "https://remote.co"
+        }
+      ]
+    },
+    "imageLoading": {
+      "type": "string",
+      "default": "lazy"
+    }
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css",
+  "style": "file:./style-index.css",
+  "viewScript": "file:./view.js"
+}
