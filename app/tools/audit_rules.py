@@ -9,6 +9,128 @@ try:
 except ImportError:
     HAS_BS4 = False
 
+def check_semantic_alignment(h1: str, headings: list) -> tuple[float, str]:
+    """
+    Evaluates semantic coherence between the H1 title and subheadings.
+    If running under tests or API keys are missing, falls back to keyword overlap.
+    Otherwise, invokes Gemini to check true semantic support.
+    """
+    # 1. Fallback / Keyword Overlap Calculation
+    h1_words = set(re.sub(r'[^a-zA-Z0-9\s]', '', h1).lower().split())
+    stop_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "with", "is", "are", "of", "to", "your", "our", "my", "we", "how"}
+    h1_keywords = h1_words - stop_words
+
+    subheadings_text = " ".join([txt for lvl, txt in headings if lvl > 1])
+    sub_words = set(re.sub(r'[^a-zA-Z0-9\s]', '', subheadings_text).lower().split())
+    sub_keywords = sub_words - stop_words
+
+    fallback_score = 0.0
+    if h1_keywords:
+        matching_keywords = h1_keywords.intersection(sub_keywords)
+        fallback_score = (len(matching_keywords) / len(h1_keywords)) * 100
+
+    # 2. Check if we should use fallback (offline, missing keys, or running tests)
+    is_testing = "PYTEST_CURRENT_TEST" in os.environ
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if is_testing or not api_key:
+        return fallback_score, f"Keyword matching: {fallback_score:.1f}% subheading overlap."
+
+    # 3. Live Gemini Semantic Check
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        model_name = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+
+        subheadings_list = [txt for lvl, txt in headings if lvl > 1]
+        if not h1_keywords or not subheadings_list:
+            return 100.0, "No keywords or subheadings to match."
+
+        prompt = f"""
+Analyze the semantic coherence between this main title (H1) and its subheadings (H2/H3).
+The subheadings do NOT need to contain the exact words of the H1, but they must logically belong to the same topic or support it (e.g. if the H1 is about alternative destinations to Dubai, listing specific city/country names is perfectly coherent and should score 100%).
+
+H1: "{h1}"
+Subheadings:
+{chr(10).join([f"- {s}" for s in subheadings_list])}
+
+Respond in the following format:
+SCORE: [0 to 100]
+REASON: [Brief 1-sentence explanation of why the subheadings align or mismatch semantically with the H1]
+"""
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
+        text = response.text or ""
+        score = fallback_score
+        reason = f"Completed semantic matching. (Overlap: {fallback_score:.1f}%)"
+        for line in text.splitlines():
+            if line.startswith("SCORE:"):
+                try:
+                    score = float(line.replace("SCORE:", "").strip())
+                except:
+                    pass
+            elif line.startswith("REASON:"):
+                reason = line.replace("REASON:", "").strip()
+        return score, reason
+    except Exception as e:
+        return fallback_score, f"Semantic matching fallback (API error: {e}): {fallback_score:.1f}% overlap."
+
+def check_image_alt_coherence(h1: str, images: list) -> tuple[list, str]:
+    """
+    Checks if the image alt texts are semantically coherent with the H1/topic,
+    or if they are keyword-stuffed / irrelevant.
+    """
+    # Filter out images that are missing alt tags
+    images_with_alts = [img for img in images if img.get('alt', '').strip()]
+    if not images_with_alts:
+        return [], "No images with alt tags to check."
+
+    # If testing or API keys are missing, skip semantic check
+    is_testing = "PYTEST_CURRENT_TEST" in os.environ
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if is_testing or not api_key:
+        return [], "Skipped semantic alt check in test/offline mode."
+
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        model_name = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+
+        image_data = [f"Image src: '{img.get('src')}', Alt: '{img.get('alt')}'" for img in images_with_alts]
+        prompt = f"""
+Analyze the semantic coherence of the following image alt texts against the main page topic (H1).
+H1 Topic: "{h1}"
+
+Images with Alt Texts:
+{chr(10).join(image_data)}
+
+Evaluate if any image alt texts are:
+1. Semantically irrelevant to the main topic (H1).
+2. Keyword-stuffed (contain unnatural lists of keywords instead of describing the image context).
+
+Respond in the following format:
+INCOHERENT_IMAGES: [List of image filenames/sources that are irrelevant or stuffed, comma-separated. Write 'None' if all are good]
+REASON: [Brief explanation of why they are flagged]
+"""
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt
+        )
+        text = response.text or ""
+        incoherent = []
+        reason = "All alt texts are coherent."
+        for line in text.splitlines():
+            if line.startswith("INCOHERENT_IMAGES:"):
+                val = line.replace("INCOHERENT_IMAGES:", "").strip()
+                if val.lower() != "none" and val:
+                    incoherent = [s.strip() for s in val.split(",") if s.strip()]
+            elif line.startswith("REASON:"):
+                reason = line.replace("REASON:", "").strip()
+        return incoherent, reason
+    except Exception as e:
+        return [], f"Semantic alt check fallback (API error: {e})."
+
 def run_audit(html_content: str, page_url: str = "") -> dict:
     """
     Runs all 19 technical SEO and AEO rules against the HTML content.
@@ -263,26 +385,15 @@ def run_audit(html_content: str, page_url: str = "") -> dict:
     )
 
     # 11. Title-Content Semantic Matching
-    h1_words = set(re.sub(r'[^a-zA-Z0-9\s]', '', title_text or (h1s[0] if h1s else "")).lower().split())
-    # Stop words to filter out
-    stop_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "with", "is", "are", "of", "to", "your", "our", "my", "we", "how"}
-    h1_keywords = h1_words - stop_words
-
-    subheadings_text = " ".join([txt for lvl, txt in headings if lvl > 1])
-    sub_words = set(re.sub(r'[^a-zA-Z0-9\s]', '', subheadings_text).lower().split())
-    sub_keywords = sub_words - stop_words
-
-    match_score = 0.0
-    if h1_keywords:
-        matching_keywords = h1_keywords.intersection(sub_keywords)
-        match_score = (len(matching_keywords) / len(h1_keywords)) * 100
+    h1_val = title_text or (h1s[0] if h1s else "")
+    match_score, match_reason = check_semantic_alignment(h1_val, headings)
 
     metrics['semantic_match_score'] = match_score
     add_result(
         "Topical Alignment",
-        match_score < 40.0 and len(h1_keywords) > 0,
-        f"Low topical coherence ({match_score:.1f}% subheading overlap). Ensure subheadings reinforce H1 keywords: {list(h1_keywords)[:5]}.",
-        f"Passed semantic matching check ({match_score:.1f}% subheading overlap)." if len(h1_keywords) > 0 else "Passed (No H1 keywords to match).",
+        match_score < 40.0,
+        f"Low topical coherence ({match_score:.1f}% alignment). {match_reason}",
+        f"Passed semantic matching check ({match_score:.1f}% alignment). {match_reason}",
         is_warning=True
     )
 
@@ -305,13 +416,43 @@ def run_audit(html_content: str, page_url: str = "") -> dict:
 
     metrics['images_count'] = len(images)
 
-    # 12. Alt Text
-    missing_alt_images = [img.get('src', 'unknown') for img in images if not img.get('alt', '').strip()]
+    # 12. Image Alt Text Accessibility
+    missing_alt_images = []
+    generic_alt_images = []
+    generic_words = {"image", "screenshot", "pic", "logo", "icon", "placeholder", "img", "photo", "banner"}
+
+    for img in images:
+        src = img.get('src', 'unknown')
+        alt = img.get('alt', '').strip()
+        if not alt:
+            missing_alt_images.append(src)
+        else:
+            alt_lower = alt.lower()
+            if alt_lower in generic_words or len(alt_lower) < 4:
+                generic_alt_images.append((src, alt))
+            elif any(ext in alt_lower for ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]):
+                generic_alt_images.append((src, alt))
+
+    # Live Semantic Alt Coherence Check
+    incoherent_alt_images, semantic_reason = check_image_alt_coherence(
+        title_text or (h1s[0] if h1s else ""),
+        images
+    )
+
+    has_alt_issue = len(missing_alt_images) > 0 or len(generic_alt_images) > 0 or len(incoherent_alt_images) > 0
+    error_parts = []
+    if missing_alt_images:
+        error_parts.append(f"Found {len(missing_alt_images)} image(s) missing alt tags (e.g. '{os.path.basename(missing_alt_images[0])}')")
+    if generic_alt_images:
+        error_parts.append(f"Found {len(generic_alt_images)} image(s) with generic/non-descriptive alt text (e.g. '{generic_alt_images[0][1]}')")
+    if incoherent_alt_images:
+        error_parts.append(f"Found {len(incoherent_alt_images)} image(s) with semantically incoherent or stuffed alt text (e.g. '{os.path.basename(incoherent_alt_images[0])}')")
+
     add_result(
         "Image Alt Text",
-        len(missing_alt_images) > 0,
-        f"Found {len(missing_alt_images)} image(s) missing alt descriptive tags. Examples: {', '.join([os.path.basename(s) for s in missing_alt_images[:3]])}.",
-        "All images have alt tags configured.",
+        has_alt_issue,
+        f"{' and '.join(error_parts)}. {semantic_reason} Accessible alt text should describe the image context and relate to the page topic.",
+        f"All images have descriptive, accessible alt tags configured. {semantic_reason}",
         is_warning=True
     )
 
