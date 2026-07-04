@@ -34,18 +34,28 @@ api_key = os.environ.get("GEMINI_API_KEY")
 model_name = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
 model = Gemini(model=model_name, api_key=api_key)
 
-# Robust automatic retry patch for Google GenAI 503 ServerErrors
+# Robust automatic retry patch for Google GenAI 503 ServerErrors and 429 Rate Limits
 try:
-    from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-    from google.genai.errors import ServerError
+    from tenacity import retry, stop_after_attempt, wait_exponential
+    from google.genai.errors import ServerError, ClientError
+
+    def retry_if_transient_error(exception):
+        if isinstance(exception, ServerError):
+            return True
+        if isinstance(exception, ClientError):
+            if getattr(exception, "status_code", None) == 429:
+                return True
+            if "429" in str(exception) or "RESOURCE_EXHAUSTED" in str(exception):
+                return True
+        return False
 
     original_generate_content_async = model.api_client.aio.models.generate_content
     original_generate_content_sync = model.api_client.models.generate_content
 
     @retry(
         stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(ServerError),
+        wait=wait_exponential(multiplier=2, min=4, max=30),
+        retry=retry_if_transient_error,
         reraise=True
     )
     async def retried_generate_content_async(*args, **kwargs):
@@ -53,8 +63,8 @@ try:
 
     @retry(
         stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(ServerError),
+        wait=wait_exponential(multiplier=2, min=4, max=30),
+        retry=retry_if_transient_error,
         reraise=True
     )
     def retried_generate_content_sync(*args, **kwargs):
