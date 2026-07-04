@@ -11,6 +11,12 @@ import urllib3
 # Suppress insecure request warnings for local self-signed dev sites
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+}
+
 # Load audit rules module from the skill path
 from .audit_rules import run_audit, generate_report_html
 
@@ -213,7 +219,7 @@ def advanced_seo_audit(wp_post_id_or_url: str) -> str:
             resolved_url = input_str
             # Fetch public rendered page directly
             try:
-                response = requests.get(resolved_url, timeout=10, verify=_get_verify_param(resolved_url))
+                response = requests.get(resolved_url, headers=BROWSER_HEADERS, timeout=10, verify=_get_verify_param(resolved_url))
                 if response.status_code == 200:
                     html_content = response.text
 
@@ -258,7 +264,7 @@ def advanced_seo_audit(wp_post_id_or_url: str) -> str:
                     resolved_url = f"{base_url}/{slug}/"
 
                     # Fetch rendered HTML
-                    html_resp = requests.get(resolved_url, timeout=10, verify=_get_verify_param(resolved_url))
+                    html_resp = requests.get(resolved_url, headers=BROWSER_HEADERS, timeout=10, verify=_get_verify_param(resolved_url))
                     if html_resp.status_code == 200:
                         html_content = html_resp.text
                     else:
@@ -773,7 +779,7 @@ def canonical_audit(urls: str) -> str:
 
     for url in url_list:
         try:
-            resp = requests.get(url, timeout=10, verify=_get_verify_param(url))
+            resp = requests.get(url, headers=BROWSER_HEADERS, timeout=10, verify=_get_verify_param(url))
             if resp.status_code != 200:
                 report.append(f"- `{url}`: ❌ Failed to fetch (Status {resp.status_code})")
                 continue
@@ -825,7 +831,7 @@ def redirect_chain_detector(url: str) -> str:
             count += 1
             visited.add(current_url)
 
-            resp = requests.get(current_url, allow_redirects=False, timeout=5, verify=_get_verify_param(current_url))
+            resp = requests.get(current_url, headers=BROWSER_HEADERS, allow_redirects=False, timeout=5, verify=_get_verify_param(current_url))
             status = resp.status_code
 
             # Record hop
