@@ -86,10 +86,24 @@ graph TD
 
 4. Configure environment variables inside `.env`:
    ```ini
-   GEMINI_API_KEY=your_gemini_api_key
-   TELEGRAM_BOT_TOKEN=your_telegram_bot_token
-   SERPAPI_API_KEY=your_serpapi_api_key
-   DEVELOPER_SECRET_KEY=your_developer_jwt_key
+   # Model Credentials
+   GEMINI_API_KEY="your_gemini_api_key"
+   GEMINI_MODEL="gemini-2.5-flash-lite"
+   GOOGLE_CLOUD_PROJECT="vibe-coding-assignments"
+
+   # Telegram Bot Credentials
+   TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
+
+   # WordPress REST API Credentials
+   WP_API_URL="http://aeo-copilot.local/wp-json/wp/v2"
+   WP_USERNAME="admin"
+   WP_APPLICATION_PASSWORD="xxxx xxxx xxxx xxxx xxxx xxxx"
+
+   # Search & AEO Audit Credentials
+   SERPAPI_API_KEY="your_serpapi_api_key"
+
+   # Oauth2 Credentials for developer signature bypassing
+   DEVELOPER_SECRET_KEY="your_developer_jwt_key"
    ```
 
 5. Install the local git pre-commit hooks:

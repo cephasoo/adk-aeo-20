@@ -55,6 +55,7 @@ Create a file named `.env` in the root of your project directory (`C:\Users\USER
 ```bash
 # Model & Analytics Credentials
 GEMINI_API_KEY="your-gemini-api-key"
+GEMINI_MODEL="gemini-2.5-flash-lite"
 GOOGLE_CLOUD_PROJECT="vibe-coding-assignments"
 
 # Telegram Bot Credentials
@@ -67,4 +68,24 @@ WP_APPLICATION_PASSWORD="xxxx xxxx xxxx xxxx xxxx xxxx"
 
 # Search & AEO Audit Credentials
 SERPAPI_API_KEY="your-serpapi-api-key"
+
+# Oauth2 Credentials for developer signature bypassing
+DEVELOPER_SECRET_KEY="your-developer-secret-key"
+```
+
+---
+
+## 🔒 Step 4: Google Search Console (GSC) Audit Mode
+
+The `/gsc` command inspects URL indexation, mobile usability, CTR metrics, and search queries. It supports two modes:
+
+### 1. Demo / Mock Mode (Default Local Setup)
+* If `GSC_MCP_COMMAND` is not defined in your `.env` file, the bot automatically falls back to **Demo Mode**.
+* In this mode, running `/gsc <url>` will immediately output fully populated, clean mock reports. This allows you to demo and test the full Search Console command set locally without configuring complex OAuth connections.
+
+### 2. Production Mode (VPS / Live Deployment)
+* When deployed live, users authenticate securely using **Google OAuth 2.0**.
+* You configure the GSC MCP command in your VPS `.env` pointing to the Search Console server executable (e.g., `npx -y @google/search-console-mcp`).
+* Users run `/login` in Telegram, sign in via their Google Account in the browser, and the bot securely queries their real Search Console properties on their behalf using their OAuth access token.
+
 ```

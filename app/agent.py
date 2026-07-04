@@ -34,6 +34,37 @@ api_key = os.environ.get("GEMINI_API_KEY")
 model_name = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
 model = Gemini(model=model_name, api_key=api_key)
 
+# Robust automatic retry patch for Google GenAI 503 ServerErrors
+try:
+    from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+    from google.genai.errors import ServerError
+
+    original_generate_content_async = model.api_client.aio.models.generate_content
+    original_generate_content_sync = model.api_client.models.generate_content
+
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(ServerError),
+        reraise=True
+    )
+    async def retried_generate_content_async(*args, **kwargs):
+        return await original_generate_content_async(*args, **kwargs)
+
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(ServerError),
+        reraise=True
+    )
+    def retried_generate_content_sync(*args, **kwargs):
+        return original_generate_content_sync(*args, **kwargs)
+
+    model.api_client.aio.models.generate_content = retried_generate_content_async
+    model.api_client.models.generate_content = retried_generate_content_sync
+except Exception as e:
+    print(f"[*] Warning: Failed to apply retry patch to model: {e}")
+
 def fetch_and_parse_gutenberg_post(wp_post_id: str) -> str:
     """
     Connects to WordPress REST API, retrieves a Gutenberg post (by ID or URL slug),
