@@ -455,7 +455,7 @@ aeo_copilot_agent = LlmAgent(
         "5. Injecting schema metadata back into WordPress post/page metafields.\n"
         "6. Publishing new Gutenberg pages using native blocks or custom React blocks based on user prompt.\n\n"
         "Structured Data & Schema Rules:\n"
-        "- NEVER recommend or generate FAQ schema (FAQPage) for standard blogs, niche travel sites, or e-commerce/commercial sites. Google's 2023 update deprecated FAQ rich results for general sites, restricting it strictly to government, authority, and high-trust institutional portals.\n"
+        "- ONLY recommend or generate FAQ schema (FAQPage) if the site is an official authority, medical, or government portal (e.g., domains containing '.gov', '.edu', 'nhs.uk', 'cdc.gov', or verified institutional authority platforms). Google's 2023 update deprecated FAQ rich results for standard blogs, e-commerce, or transactional sites.\n"
         "- Instead, recommend structured data matching the page's intent (e.g. Article, Recipe, Product, LocalBusiness, Review) based on the official Google Search Gallery: https://developers.google.com/search/docs/appearance/structured-data/search-gallery.\n"
         "- If you have questions about structured data features, query the 'google-developer-knowledge' MCP server tools (like 'search_documents' or 'answer_query') to retrieve authoritative guidelines.\n\n"
         "Formatting Guidelines:\n"
