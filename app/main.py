@@ -150,8 +150,8 @@ def handle_incoming_message(chat_id: int, text: str):
             import datetime
             payload = {
                 "sub": str(chat_id),
-                "scopes": ["site:write", "gsc:read"],
-                "verified_properties": ["aeo-copilot.local", "localhost", "127.0.0.1"],
+                "scopes": ["site:write", "gsc_read"],
+                "verified_properties": ["aeo-copilot.local", "localhost", "127.0.0.1", "travelanders.com"],
                 "exp": datetime.datetime.utcnow() + datetime.timedelta(days=1)
             }
             token = jwt.encode(payload, dev_key, algorithm="HS256")
