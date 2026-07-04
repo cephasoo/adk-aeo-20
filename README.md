@@ -89,7 +89,7 @@ graph TD
    ```ini
    # Model Credentials
    GEMINI_API_KEY="your_gemini_api_key"
-   GEMINI_MODEL="gemini-2.5-flash-lite"
+   GEMINI_MODEL="gemini-3.5-flash"
    GOOGLE_CLOUD_PROJECT="your_google_cloud_project_id"
 
    # Telegram Bot Credentials
