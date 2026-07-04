@@ -56,15 +56,15 @@ Create a file named `.env` in the root of your project directory (`C:\Users\USER
 # Model & Analytics Credentials
 GEMINI_API_KEY="your-gemini-api-key"
 GEMINI_MODEL="gemini-2.5-flash-lite"
-GOOGLE_CLOUD_PROJECT="vibe-coding-assignments"
+GOOGLE_CLOUD_PROJECT="your-google-cloud-project-id"
 
 # Telegram Bot Credentials
 TELEGRAM_BOT_TOKEN="your-telegram-bot-token"
 
 # WordPress REST API Credentials
-WP_API_URL="http://aeo-copilot.local/wp-json/wp/v2"
-WP_USERNAME="admin"
-WP_APPLICATION_PASSWORD="xxxx xxxx xxxx xxxx xxxx xxxx"
+WP_API_URL="http://your-wordpress-domain.local/wp-json/wp/v2"
+WP_USERNAME="your-wordpress-username"
+WP_APPLICATION_PASSWORD="your-wordpress-application-password"
 
 # Search & AEO Audit Credentials
 SERPAPI_API_KEY="your-serpapi-api-key"
