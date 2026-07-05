@@ -153,6 +153,56 @@ def send_telegram_message(chat_id: int, text: str):
         except Exception as e:
             print(f"Error sending message chunk to Telegram: {e}")
 
+# Initialize Firestore Client if configured, fallback to None if ADC credentials are missing
+db = None
+try:
+    from google.cloud import firestore
+    db = firestore.Client()
+    print("[*] Google Cloud Firestore client initialized successfully.")
+except Exception as e:
+    print(f"[*] Firestore initialization skipped or failed: {e}. Session persistence will run in-memory only.")
+
+def restore_telegram_session(chat_id: int, app_name: str, session_id: str):
+    """Restores the conversation session from Firestore if it exists."""
+    if db is None:
+        return
+    try:
+        user_id = str(chat_id)
+        doc_ref = db.collection("telegram_sessions").document(user_id)
+        doc = doc_ref.get()
+        if doc.exists:
+            data = doc.to_dict()
+            sess_json = data.get("session_json")
+            if sess_json:
+                from google.adk.sessions import Session
+                sess = Session.model_validate_json(sess_json)
+                # Inject the session directly into the runner's session service storage
+                if app_name not in runner.session_service.sessions:
+                    runner.session_service.sessions[app_name] = {}
+                if user_id not in runner.session_service.sessions[app_name]:
+                    runner.session_service.sessions[app_name][user_id] = {}
+                runner.session_service.sessions[app_name][user_id][session_id] = sess
+                print(f"[*] Restored long-term session context for chat ID {chat_id} from Firestore.")
+    except Exception as e:
+        print(f"[!] Warning: Failed to restore session from Firestore: {e}")
+
+def save_telegram_session(chat_id: int, app_name: str, session_id: str):
+    """Saves the conversation session back to Firestore."""
+    if db is None:
+        return
+    try:
+        user_id = str(chat_id)
+        if app_name in runner.session_service.sessions:
+            if user_id in runner.session_service.sessions[app_name]:
+                sess = runner.session_service.sessions[app_name][user_id].get(session_id)
+                if sess:
+                    sess_json = sess.model_dump_json()
+                    doc_ref = db.collection("telegram_sessions").document(user_id)
+                    doc_ref.set({"session_json": sess_json, "updated_at": firestore.SERVER_TIMESTAMP})
+                    print(f"[*] Successfully persisted updated session context for chat ID {chat_id} to Firestore.")
+    except Exception as e:
+        print(f"[!] Warning: Failed to persist session to Firestore: {e}")
+
 def handle_incoming_message(chat_id: int, text: str):
     """Feeds incoming Telegram commands to the ADK agent and returns responses."""
     text_clean = text.strip()
@@ -221,6 +271,12 @@ def handle_incoming_message(chat_id: int, text: str):
 
     # Trigger the ADK Agent reasoning engine
     try:
+        app_name = runner.app_name
+        session_id = f"session_{chat_id}"
+
+        # Restore session context from Firestore if available
+        restore_telegram_session(chat_id, app_name, session_id)
+
         print(f"[*] Dispatching prompt to ADK Agent: '{text_clean}'")
 
         # Format user input for ADK GenAI types
@@ -230,7 +286,7 @@ def handle_incoming_message(chat_id: int, text: str):
         # Run the workflow using the runner
         response_events = runner.run(
             user_id=str(chat_id),
-            session_id=f"session_{chat_id}",
+            session_id=session_id,
             new_message=new_msg
         )
 
@@ -246,6 +302,9 @@ def handle_incoming_message(chat_id: int, text: str):
             reply_content = "Agent finished execution but returned no output."
 
         send_telegram_message(chat_id, reply_content)
+
+        # Persist updated session context to Firestore
+        save_telegram_session(chat_id, app_name, session_id)
     except Exception as e:
         error_msg = f"❌ Error during agent execution: {e}"
         print(error_msg, file=sys.stderr)
