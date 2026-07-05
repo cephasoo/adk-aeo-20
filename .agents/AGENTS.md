@@ -5,3 +5,4 @@
 - **Structured Data & Schema Recommendations**:
   - Suggest appropriate structured data types matching the page intent (e.g., `Article`, `Product`, `Review`, `LocalBusiness`) by referencing Google's official Search Gallery: `https://developers.google.com/search/docs/appearance/structured-data/search-gallery`.
   - Avoid listing, discussing, or explaining irrelevant or non-applicable schema types in your reports.
+  - Authoritative Reference Retrieval: To ensure recommendations align with the latest Google Core Updates and Search Console guidelines, utilize the 'google-developer-knowledge' MCP server tools (`search_documents` or `answer_query`) to retrieve live documentation when validating search features.
