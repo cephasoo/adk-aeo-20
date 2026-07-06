@@ -1,4 +1,4 @@
-# Gutenberg AEO Copilot
+# Gutenberg AEO Copilot Telegram Bot
 > **Autonomous WordPress SEO & Answer Engine Optimization (AEO) Auditor**
 
 Gutenberg AEO Copilot is an autonomous agent built using the **Google Agent Development Kit (ADK) 2.0**. It helps modern publishers optimize their content for both traditional search engines (SEO) and generative search engines (Answer Engine Optimization / AEO, such as Google AI Overviews / SGE).
