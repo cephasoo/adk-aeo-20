@@ -1,7 +1,7 @@
 # Gutenberg AEO Copilot Telegram Bot
 > **Autonomous WordPress SEO & Answer Engine Optimization (AEO) Auditor**
 
-Gutenberg AEO Copilot is an autonomous agent built using the **Google Agent Development Kit (ADK) 2.0**. It helps modern publishers optimize their content for both traditional search engines (SEO) and generative search engines (Answer Engine Optimization / AEO, such as Google AI Overviews / SGE).
+Gutenberg AEO Copilot Telegram Bot is an autonomous SEO/AEO agent built using the **Google Agent Development Kit (ADK) 2.0**. It helps modern publishers optimize their content for both traditional search engines (SEO) and generative search engines (Answer Engine Optimization / AEO, such as Google AI Overviews / SGE).
 
 This project was built as a Capstone Project for the **5-Day AI Agents Intensive Vibe Coding Course with Google**.
 
@@ -11,20 +11,28 @@ This project was built as a Capstone Project for the **5-Day AI Agents Intensive
 
 ```mermaid
 graph TD
-    User([Telegram User]) <-->|Commands / Prompts| TelegramBot[FastAPI / Telegram Bot App]
+    User([Telegram User]) <-->|Commands & Prompts| TelegramBot[FastAPI / Telegram Bot App]
     TelegramBot <-->|User Input / Response| ADKRunner[InMemoryRunner]
     ADKRunner <-->|Orchestration Graph| ADKWorkflow[ADK Workflow Engine]
 
+    subgraph MemoryPersistence [Memory & Persistent Storage]
+        Firestore[(Firestore DB)] <-->|events subcollection| TelegramBot
+        TTLPolicy[30-Day TTL Expiration] -->|Auto-deletes| Firestore
+        Pruner[Recursive Turn Summarizer] -->|Limits to <7 turns| ADKRunner
+    end
+
     subgraph ADKWorkflow [ADK Workflow & Agent]
         LlmAgent[LlmAgent] <-->|Gemini Flash| LLM((Gemini API))
-        LlmAgent -->|Tools| CustomTools[Secure Agent Tools]
+        LlmAgent -->|Invokes Tools & Skills| CustomTools[Secure Agent Tools & Skills]
     end
 
     subgraph CustomTools [Secure Agent Tools & Skills]
-        Audit[WordPress HTML Auditor] -->|19 Rules| Report[Polished HTML Report]
-        Social[Social Listener Skill] -->|Google Forums| Gaps[Narrative Gap Analysis]
-        Tracker[AEO Performance Tracker] -->|Firestore Logs| Trends[Citation Trend Analysis]
-        Serp[SerpAPI Geolocation Engine] -->|ISO Resolver| LocalSearch[Localized SERP Results]
+        direction TB
+        Audits[SEO & Technical Audits<br>• advanced_seo_audit<br>• canonical_audit<br>• redirect_chain_detector]
+        Console[Google Search Console<br>• gsc_indexing_inspector<br>• gsc_performance_report<br>• gsc_page_query_analysis]
+        Visibility[SERP Features & AEO Tracking<br>• serp_position_tracker<br>• aeo_citation_checker]
+        WPIntegrations[Gutenberg Block & Schema<br>• schema_metadata_generator<br>• deploy_blocks]
+        CustomSkill[serp-feature-and-intent-auditor Skill<br>• LLM Search Intent Classifier<br>• Competitor Gap Analysis<br>• Content Scaling Roadmaps]
     end
 
     subgraph SecurityGating [Security boundaries & Paved Roads]
@@ -37,25 +45,30 @@ graph TD
 
 ## Key Features & Concepts Demonstrated
 
-### 1. Spec-Driven Orchestration (Day 1 & Day 5)
+### 1. Spec-Driven Orchestration & Session Pruning
 * Utilizes the `google-adk` framework's `Workflow` and `Edge` graph classes.
-* Implements thread-safe in-memory state locks (`threading.Lock`) to manage state-modifying tools safely during parallel user Telegram polling sessions.
+* Implements a **Recursive Turn Summarization Engine** that keeps active chat context under **7 turns** to conserve LLM tokens and stay well within Firestore's 1MB cap. Turns older than 7 are summarized down to under 50 words by Gemini and recursively merged with existing summaries.
 
-### 2. Custom Model Context Protocol (MCP) Tools & Geolocation (Day 2)
-* Built-in multi-tiered location resolution engine that parses country-specific ccTLDs (like `.co.uk`, `.com.ng`, `.ca`), queries the Google Knowledge Graph to resolve headquarters addresses, and resolves search regions dynamically.
-* Supports autocomplete, Google Maps geocoding, SGE page token tracking, and AI Overview Mode.
+### 2. Event-Based Firestore Persistence & TTL
+* Refactored session storage from a monolithic JSON document to an event-based subcollection: `/telegram_sessions/{chat_id}/events/{event_id}`.
+* Automatically stamps each event with a `last_updated` date set to 30 days in the future, allowing Firestore **Time-To-Live (TTL)** deletion jobs to purge stale logs continuously.
+* Synchronizes in-memory pruning with the database: obsolete events deleted by the pruner are immediately removed from the Firestore subcollection.
 
-### 3. Custom Agent Skills (Day 3)
-* **seo-auditor**: Enforces structured rules for auditing HTML heading hierarchies and image alt tags on crawled web pages.
-* **manage-aeo-custom-blocks**: Guides the agent on how to format AEO custom Gutenberg blocks (like Hero and FAQ cards) and call the WordPress page generator.
-* **automation-roi-parameters**: Integrates guidelines for measuring search value and AEO return-on-investment parameters.
+### 3. Custom ADK 2.0 Skill: SERP Feature & Intent Auditor
+* **LLM Intent Classification**: Leverages a fast, synchronous Gemini call inside `serp_position_tracker` to classify search query intent (Navigational, Informational, Commercial, Transactional) semantically, bypassing fragile regex matching.
+* **Granular Placement Tracking**: Inspects SerpAPI results to track organic positions (1-100), Featured Snippets (Answer Box), PAA cards, Google Ads (sponsored listings, top/bottom blocks), Knowledge Graphs, and Local Map Packs.
+* **Cognitive Auditing & Recovery Roadmaps**: 
+  * **Inclusion Audits**: Scores the target page's layout alignment against the classified intent (0-100%).
+  * **Exclusion Audits**: If a brand is not ranking, the agent inspects the top 3 ranking competitors, diagnoses if exclusion is due to an **Intent Mismatch**, and generates a **Content Scaling Roadmap** suggesting guide titles and PAA question integrations.
 
-### 4. Enterprise-Grade Security Paved Roads (Day 4)
-* **Pre-Commit Hook**: Integrates a local Git hook scanning for hardcoded secrets and API keys using custom Semgrep rules. Includes a Windows-compatible native Python launcher shim inside `.venv`.
-* **IDE Gating Hook**: Implements `PreToolUse` hooks (`hooks.json` & `validate_tool_call.py`) to intercept `run_command` calls and prevent dangerous commands (like `rm -rf` or `format c:`) from running inside the terminal sandbox.
+### 4. Advanced Technical SEO & Google Search Console Integration
+* **Redirect loops & Loops Detector**: Recursively follows redirects (`redirect_chain_detector`) to trace loops, hops, and canonical targets.
+* **Canonical cannibalization auditor**: Analyzes list of URLs (`canonical_audit`) to verify canonical tag health and prevent ranking self-cannibalization.
+* **GSC Inspector**: Interfaces with Google Search Console APIs to audit indexing status (`gsc_indexing_inspector`), retrieve performance reports (`gsc_performance_report`), and query organic search impressions by page (`gsc_page_query_analysis`).
 
-### 5. Polished Dashboard Reports (UX)
-* Compiles WordPress page audits into a premium, responsive dark-mode dashboard HTML report mirroring the layout of premium testimonial slider cards with rounded left-hand severity tags, soft status glows, and Inter/Outfit typography.
+### 5. Enterprise-Grade Security Paved Roads
+* **Pre-Commit Hook**: Git pre-commit hook scanning for hardcoded secrets and API keys using custom Semgrep rules. Includes a Windows-compatible native Python launcher shim inside `.venv`.
+* **IDE Gating Hook**: Implements `PreToolUse` hooks (`hooks.json` & `validate_tool_call.py`) to intercept `run_command` calls and prevent dangerous commands from running inside the terminal sandbox.
 
 ---
 
@@ -64,6 +77,7 @@ graph TD
 ### Prerequisites
 * Python 3.10+
 * Git
+* Firebase/Firestore Project
 
 ### Step-by-Step Installation
 
@@ -125,18 +139,23 @@ Open Telegram and send commands to your configured bot:
 *   `/start` - Overview of capabilities and instructions.
 *   `/login <token>` - Authenticate your session with developer JWT scopes.
 *   `/audit <url_or_id>` - Performs a 19-rule rendered technical SEO and AEO audit and generates the HTML report.
-*   `/track <url> | <query>` - Track Google search organic position.
+*   `/track <url> | <query>` - Track Google search organic, paid, and feature rankings.
 *   `/aeo <url> | <query>` - Check AI Overview citation and calculate SoM.
-*   `/redirect <url>` - Analyze redirect chains.
-*   `/canonical <urls_list>` - Check canonical tag paths.
+*   `/redirect <url>` - Analyze redirect chains, loops, and hops.
+*   `/canonical <urls_list>` - Check canonical tag paths and duplicate cannibalization.
 *   `/schema <id> | <type>` - Generate and inject structured JSON-LD schemas.
 *   `/gsc <url>` - Check Google Search Console indexing and performance metrics.
+*   `/clear` or `/reset` - Wipes active in-memory session history and recursively deletes all Firestore event documents.
 
 ---
 
 ## Verification & Testing
 
-To run the unit and integration tests:
+To run the unit and integration tests (including the session pruner and event-based persistence tests):
 ```bash
 pytest
 ```
+Or run individual test scripts manually:
+*   `python scratch/test_session_summarization.py`
+*   `python scratch/test_event_based_storage.py`
+*   `python scratch/test_serp_feature_tracking.py`
