@@ -140,7 +140,7 @@ graph TD;
 
 And some trailing text."""
     
-    html = markdown_to_html_with_mermaid(md)
+    html, warning = markdown_to_html_with_mermaid(md)
     
     # Assert standard HTML structure
     assert "<!DOCTYPE html>" in html
@@ -152,4 +152,62 @@ And some trailing text."""
     assert '<img width="600"' in html
     assert 'src="https://mermaid.ink/img/' in html
     assert 'alt="Mermaid Diagram"' in html
+    assert warning == ""
+
+def test_table_auto_repair():
+    from app.tools.google_docs_native import markdown_to_html_with_mermaid
+    # Missing separator row table
+    md_missing = """| Header A | Header B |
+| Cell A1 | Cell B1 |"""
+    html, warning = markdown_to_html_with_mermaid(md_missing)
+    assert "repaired" in warning
+    assert "<table>" in html
+    assert "<thead>" in html
+    assert "<tbody>" in html
+
+def test_table_warning():
+    from app.tools.google_docs_native import markdown_to_html_with_mermaid
+    # Table with pipe but invalid format (no adjacent rows with pipes)
+    md_invalid = """This has a | character but it is not a table."""
+    html, warning = markdown_to_html_with_mermaid(md_invalid)
+    assert "WARNING: Pipe characters" in warning
+    assert "<table>" not in html
+
+def test_file_based_helpers(tmp_path, monkeypatch):
+    from app.tools.google_docs_native import update_google_doc_from_file, append_to_google_doc_from_file
+    
+    # Write a test markdown file
+    md_file = tmp_path / "test_doc.md"
+    md_file.write_text("Hello from file!\n\n| H1 | H2 |\n|---|---|\n| C1 | C2 |", encoding="utf-8")
+    
+    # Mock Drive service and file update/export endpoints
+    class MockUpdate:
+        def execute(self):
+            return {"id": "test-doc-123"}
+            
+    class MockFiles:
+        def update(self, fileId, media_body):
+            assert fileId == "test-doc-123"
+            return MockUpdate()
+        def export(self, fileId, mimeType):
+            assert fileId == "test-doc-123"
+            class MockExport:
+                def execute(self):
+                    return b"<html><body>Existing content</body></html>"
+            return MockExport()
+
+    class MockDriveService:
+        def files(self):
+            return MockFiles()
+
+    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (None, MockDriveService()))
+    monkeypatch.setattr("app.tools.google_docs_native.resolve_document_id", lambda val: "test-doc-123")
+    
+    # Test update from file
+    res_update = update_google_doc_from_file("test-doc-123", str(md_file))
+    assert "Successfully replaced content" in res_update
+    
+    # Test append from file
+    res_append = append_to_google_doc_from_file("test-doc-123", str(md_file))
+    assert "Successfully appended text" in res_append
 

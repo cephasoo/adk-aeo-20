@@ -9,7 +9,9 @@ from app.tools.google_docs_native import (
     read_google_doc,
     create_google_doc,
     append_to_google_doc,
-    update_google_doc
+    update_google_doc,
+    update_google_doc_from_file,
+    append_to_google_doc_from_file
 )
 
 # Create an MCP server
@@ -56,6 +58,30 @@ def update_doc(document_id_or_title: str, new_content: str) -> str:
         new_content: The new text content to replace the document body.
     """
     return update_google_doc(document_id_or_title, new_content)
+
+@mcp.tool()
+def update_doc_from_file(document_id_or_title: str, file_path: str) -> str:
+    """
+    Replaces the entire body content of a Google Document with the content of a local markdown file.
+    Use this tool instead of update_doc to update large documents (13KB+) to avoid JSON-RPC truncation.
+    
+    Args:
+        document_id_or_title: The target document ID or Document Title.
+        file_path: The absolute path to the local markdown file on disk.
+    """
+    return update_google_doc_from_file(document_id_or_title, file_path)
+
+@mcp.tool()
+def append_doc_from_file(document_id_or_title: str, file_path: str) -> str:
+    """
+    Appends the content of a local markdown file to the end of a Google Document.
+    Use this tool instead of append_doc to append large content to avoid JSON-RPC truncation.
+    
+    Args:
+        document_id_or_title: The target document ID or Document Title.
+        file_path: The absolute path to the local markdown file on disk.
+    """
+    return append_to_google_doc_from_file(document_id_or_title, file_path)
 
 if __name__ == "__main__":
     mcp.run()

@@ -56,9 +56,8 @@ def get_google_services():
         with open(token_path, 'w') as token:
             token.write(creds.to_json())
             
-    docs_service = build('docs', 'v1', credentials=creds)
     drive_service = build('drive', 'v3', credentials=creds)
-    return docs_service, drive_service
+    return None, drive_service
 
 
 def resolve_document_id(identifier: str) -> str:
@@ -81,25 +80,60 @@ def resolve_document_id(identifier: str) -> str:
         
     return identifier
 
-def markdown_to_html_with_mermaid(md_content: str) -> str:
+def markdown_to_html_with_mermaid(md_content: str) -> tuple[str, str]:
     """
     Converts a Markdown string to standard HTML, converting Mermaid syntax
     into base64-encoded image tags targeting mermaid.ink with explicit widths.
+    Also auto-repairs tables and checks for warnings.
+    
+    Returns:
+        A tuple of (html_content, warning_msg)
     """
-    # Find all ```mermaid ... ``` code blocks
+    # 1. Preprocess and auto-repair tables
+    lines = md_content.splitlines()
+    repaired_lines = []
+    i = 0
+    n = len(lines)
+    repaired = False
+    
+    while i < n:
+        line = lines[i]
+        if '|' in line:
+            # We found a potential table row
+            if i + 1 < n and '|' in lines[i+1]:
+                next_line = lines[i+1]
+                # Check if next_line is a separator row
+                is_separator = all(c in '|:- \t' for c in next_line.strip()) and next_line.strip().count('-') > 0
+                if not is_separator:
+                    # Auto-inject separator row!
+                    stripped = line.strip()
+                    pipe_count = stripped.count('|')
+                    cols = pipe_count - 1 if (stripped.startswith('|') and stripped.endswith('|')) else pipe_count + 1
+                    if cols < 1:
+                        cols = 1
+                    separator_row = "|" + "|".join(["---"] * cols) + "|"
+                    repaired_lines.append(line)
+                    repaired_lines.append(separator_row)
+                    repaired = True
+                    i += 1
+                    continue
+        repaired_lines.append(line)
+        i += 1
+        
+    repaired_md = "\n".join(repaired_lines)
+    
+    # 2. Convert Mermaid blocks
     pattern = re.compile(r'```mermaid\s*\n(.*?)\n```', re.DOTALL | re.IGNORECASE)
     
     def replace_mermaid(match):
         mermaid_code = match.group(1).strip()
-        # UTF-8 encode and then Base64 encode the diagram definition
         encoded = base64.b64encode(mermaid_code.encode('utf-8')).decode('utf-8')
         img_url = f"https://mermaid.ink/img/{encoded}"
-        # Force a width attribute so Google Drive fits the image to page margins on import
         return f'<p><img width="600" src="{img_url}" alt="Mermaid Diagram" /></p>'
         
-    processed_md = pattern.sub(replace_mermaid, md_content)
+    processed_md = pattern.sub(replace_mermaid, repaired_md)
     
-    # Convert Markdown body to HTML
+    # 3. Convert Markdown body to HTML
     html_body = markdown.markdown(processed_md, extensions=['extra', 'nl2br'])
     
     html_content = f"""<!DOCTYPE html>
@@ -111,7 +145,21 @@ def markdown_to_html_with_mermaid(md_content: str) -> str:
 {html_body}
 </body>
 </html>"""
-    return html_content
+    
+    # 4. Generate warnings if pipes are present but no table was generated
+    warning_msg = ""
+    no_code_md = re.sub(r'```.*?```', '', md_content, flags=re.DOTALL)
+    no_code_md = re.sub(r'`[^`]*`', '', no_code_md)
+    if '|' in no_code_md and '<table>' not in html_body:
+        warning_msg = (
+            "WARNING: Pipe characters ('|') were detected in the input markdown, but no HTML <table> block "
+            "was generated. Please check your table formatting. Ensure you have a header row and a valid "
+            "separator row (e.g., '|---|---|') directly underneath."
+        )
+    elif repaired:
+        warning_msg = "NOTE: A markdown table was missing a separator row, which was automatically repaired."
+        
+    return html_content, warning_msg
 
 def read_google_doc(document_id_or_title: str) -> str:
     """
@@ -165,8 +213,8 @@ def append_to_google_doc(document_id_or_title: str, text: str) -> str:
         html_bytes = drive_service.files().export(fileId=document_id, mimeType='text/html').execute()
         html_content = html_bytes.decode('utf-8')
         
-        # Convert appended text to HTML (handling mermaid diagrams if any)
-        append_html = markdown_to_html_with_mermaid(text)
+        # Convert appended text to HTML (handling mermaid diagrams and tables)
+        append_html, warning = markdown_to_html_with_mermaid(text)
         
         # Extract the body contents of the appended HTML and merge
         from bs4 import BeautifulSoup
@@ -193,7 +241,10 @@ def append_to_google_doc(document_id_or_title: str, text: str) -> str:
             media_body=media
         ).execute()
         
-        return f"Successfully appended text to document {document_id}."
+        result_msg = f"Successfully appended text to document {document_id}."
+        if warning:
+            result_msg += f"\n\n{warning}"
+        return result_msg
     except Exception as e:
         return f"Error appending to document: {str(e)}"
 
@@ -212,7 +263,7 @@ def update_google_doc(document_id_or_title: str, new_content: str) -> str:
         _, drive_service = get_google_services()
         
         # Convert Markdown to structured HTML with Mermaid diagram support
-        html_content = markdown_to_html_with_mermaid(new_content)
+        html_content, warning = markdown_to_html_with_mermaid(new_content)
         
         # Create an in-memory file payload
         fh = io.BytesIO(html_content.encode('utf-8'))
@@ -224,6 +275,47 @@ def update_google_doc(document_id_or_title: str, new_content: str) -> str:
             media_body=media
         ).execute()
         
-        return f"Successfully replaced content of document {document_id}."
+        result_msg = f"Successfully replaced content of document {document_id}."
+        if warning:
+            result_msg += f"\n\n{warning}"
+        return result_msg
     except Exception as e:
         return f"Error updating document: {str(e)}"
+
+def update_google_doc_from_file(document_id_or_title: str, file_path: str) -> str:
+    """
+    Replaces the entire content of a Google Document with the content of a local markdown file.
+    
+    Args:
+        document_id_or_title: The target document ID or Title.
+        file_path: The absolute path to the local markdown file.
+    """
+    try:
+        if not os.path.exists(file_path):
+            return json.dumps({"status": "FAIL", "error": f"Local file not found: {file_path}"})
+            
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+            
+        return update_google_doc(document_id_or_title, content)
+    except Exception as e:
+        return json.dumps({"status": "FAIL", "error": str(e)})
+
+def append_to_google_doc_from_file(document_id_or_title: str, file_path: str) -> str:
+    """
+    Appends the content of a local markdown file to the end of a Google Document.
+    
+    Args:
+        document_id_or_title: The target document ID or Title.
+        file_path: The absolute path to the local markdown file.
+    """
+    try:
+        if not os.path.exists(file_path):
+            return json.dumps({"status": "FAIL", "error": f"Local file not found: {file_path}"})
+            
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+            
+        return append_to_google_doc(document_id_or_title, content)
+    except Exception as e:
+        return json.dumps({"status": "FAIL", "error": str(e)})
