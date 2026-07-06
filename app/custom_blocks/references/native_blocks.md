@@ -4,7 +4,7 @@ This reference registry documents the core Gutenberg blocks supported natively b
 
 ---
 
-## 📦 1. Text & Semantic Blocks
+## 1. Text and Semantic Blocks
 
 ### Paragraph (`core/paragraph`)
 *   **Purpose**: Default body text wrapper.
@@ -29,7 +29,7 @@ This reference registry documents the core Gutenberg blocks supported natively b
 
 ---
 
-## 🖼️ 2. Media Blocks
+## 2. Media Blocks
 
 ### Image (`core/image`)
 *   **Purpose**: Embedded images.
@@ -38,7 +38,7 @@ This reference registry documents the core Gutenberg blocks supported natively b
 
 ---
 
-## 🧱 3. Layout & Container Blocks
+## 3. Layout and Container Blocks
 
 ### Group (`core/group`)
 *   **Purpose**: Container to group multiple blocks together.
@@ -51,7 +51,7 @@ This reference registry documents the core Gutenberg blocks supported natively b
 
 ---
 
-## 🛠️ 4. Action Blocks
+## 4. Action Blocks
 
 ### Buttons (`core/buttons`) & Button (`core/button`)
 *   **Purpose**: Call-To-Action (CTA) link buttons.
