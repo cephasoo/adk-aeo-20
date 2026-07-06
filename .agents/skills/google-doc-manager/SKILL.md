@@ -5,6 +5,14 @@ description: Reads, creates, and formats documents in Google Docs, providing doc
 
 # Skill: google-doc-manager
 
+## Overview
+
+> [!IMPORTANT]
+> **CRITICAL ARCHITECTURAL REQUIREMENT:** Do NOT use the Google Docs API (`docs.googleapis.com`) or call `build('docs', 'v1', ...)` directly. The GCP project only has the **Google Drive API** enabled.
+> All document operations (create, read, append, update) must be executed using the helper library **`app.tools.google_docs_native`** which performs all actions completely via the Google Drive API.
+> Import and call the native functions:
+> * `from app.tools.google_docs_native import create_google_doc, read_google_doc, update_google_doc, append_to_google_doc`
+
 ## Description
 Reads, creates, and formats documents in Google Docs, providing document sharing links and appending or replacing text blocks.
 
