@@ -125,43 +125,50 @@ def test_append_google_doc_mock(monkeypatch):
     assert "Successfully appended" in res
 
 def test_update_google_doc_mock(monkeypatch):
-    class MockBatchRequest:
+    class MockUpdateRequest:
         def execute(self):
-            return {}
+            return {"id": "test-doc-123"}
 
-    class MockDocResource:
-        def execute(self):
-            return {
-                "body": {
-                    "content": [
-                        {"endIndex": 100}
-                    ]
-                }
-            }
+    class MockFiles:
+        def update(self, fileId, media_body):
+            assert fileId == "test-doc-123"
+            # Verify media_body is uploaded
+            assert media_body.size() > 0
+            return MockUpdateRequest()
 
-    class MockDocuments:
-        def get(self, documentId):
-            return MockDocResource()
-        def batchUpdate(self, documentId, body):
-            assert documentId == "test-doc-123"
-            requests = body["requests"]
-            assert len(requests) == 2
-            # Delete request
-            assert "deleteContentRange" in requests[0]
-            assert requests[0]["deleteContentRange"]["range"]["startIndex"] == 1
-            assert requests[0]["deleteContentRange"]["range"]["endIndex"] == 99
-            # Insert request
-            assert "insertText" in requests[1]
-            assert requests[1]["insertText"]["text"] == "Replacement content."
-            assert requests[1]["insertText"]["location"]["index"] == 1
-            return MockBatchRequest()
+    class MockDriveService:
+        def files(self):
+            return MockFiles()
 
-    class MockDocsService:
-        def documents(self):
-            return MockDocuments()
-
-    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (MockDocsService(), None))
+    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (None, MockDriveService()))
     monkeypatch.setattr("app.tools.google_docs_native.resolve_document_id", lambda val: "test-doc-123")
     
-    res = update_google_doc("test-doc-123", "Replacement content.")
+    res = update_google_doc("test-doc-123", "Replacement content with **bold** and ```mermaid\ngraph TD; A-->B;\n```.")
     assert "Successfully replaced content" in res
+
+def test_markdown_to_html_with_mermaid():
+    from app.tools.google_docs_native import markdown_to_html_with_mermaid
+    md = """# Hello Title
+This is **bold** text and *italic* text.
+
+```mermaid
+graph TD;
+    A-->B;
+    B-->C;
+```
+
+And some trailing text."""
+    
+    html = markdown_to_html_with_mermaid(md)
+    
+    # Assert standard HTML structure
+    assert "<!DOCTYPE html>" in html
+    assert "<h1>Hello Title</h1>" in html
+    assert "<strong>bold</strong>" in html
+    assert "<em>italic</em>" in html
+    
+    # Assert Mermaid block got converted to image with mermaid.ink URL and width="600"
+    assert '<img width="600"' in html
+    assert 'src="https://mermaid.ink/img/' in html
+    assert 'alt="Mermaid Diagram"' in html
+

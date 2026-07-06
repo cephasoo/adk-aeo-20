@@ -1,9 +1,14 @@
 import os
 import json
+import io
+import re
+import base64
+import markdown
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseUpload
 
 SCOPES = [
     'https://www.googleapis.com/auth/documents',
@@ -75,6 +80,38 @@ def resolve_document_id(identifier: str) -> str:
         pass
         
     return identifier
+
+def markdown_to_html_with_mermaid(md_content: str) -> str:
+    """
+    Converts a Markdown string to standard HTML, converting Mermaid syntax
+    into base64-encoded image tags targeting mermaid.ink with explicit widths.
+    """
+    # Find all ```mermaid ... ``` code blocks
+    pattern = re.compile(r'```mermaid\s*\n(.*?)\n```', re.DOTALL | re.IGNORECASE)
+    
+    def replace_mermaid(match):
+        mermaid_code = match.group(1).strip()
+        # UTF-8 encode and then Base64 encode the diagram definition
+        encoded = base64.b64encode(mermaid_code.encode('utf-8')).decode('utf-8')
+        img_url = f"https://mermaid.ink/img/{encoded}"
+        # Force a width attribute so Google Drive fits the image to page margins on import
+        return f'<p><img width="600" src="{img_url}" alt="Mermaid Diagram" /></p>'
+        
+    processed_md = pattern.sub(replace_mermaid, md_content)
+    
+    # Convert Markdown body to HTML
+    html_body = markdown.markdown(processed_md, extensions=['extra', 'nl2br'])
+    
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+</head>
+<body>
+{html_body}
+</body>
+</html>"""
+    return html_content
 
 def read_google_doc(document_id_or_title: str) -> str:
     """
@@ -160,52 +197,31 @@ def append_to_google_doc(document_id_or_title: str, text: str) -> str:
 
 def update_google_doc(document_id_or_title: str, new_content: str) -> str:
     """
-    Replaces the entire body content of a Google Document with new text.
-    Equivalent to a delete-all followed by insert, executed as a single
-    atomic batchUpdate call.
+    Replaces the entire body content of a Google Document. Converts Markdown (and Mermaid blocks)
+    to structured HTML, and updates the document contents atomically via the Google Drive API
+    media update endpoint (converting the HTML structure natively into Docs styles).
     
     Args:
         document_id_or_title: The target document ID or Title.
-        new_content: The new text content to replace the document body.
+        new_content: The new Markdown text content to replace the document body.
     """
     try:
         document_id = resolve_document_id(document_id_or_title)
-        docs_service, _ = get_google_services()
-        doc = docs_service.documents().get(documentId=document_id).execute()
-        body = doc.get('body', {})
-        content = body.get('content', [])
-        end_index = 1
-        if content:
-            end_index = content[-1].get('endIndex', 1) - 1
-            if end_index < 1:
-                end_index = 1
-
-        requests_list = []
-
-        # Step 1: Delete all existing body content (if any exists beyond the mandatory newline)
-        if end_index > 1:
-            requests_list.append({
-                'deleteContentRange': {
-                    'range': {
-                        'startIndex': 1,
-                        'endIndex': end_index
-                    }
-                }
-            })
-
-        # Step 2: Insert the replacement text at the beginning
-        requests_list.append({
-            'insertText': {
-                'location': {'index': 1},
-                'text': new_content
-            }
-        })
-
-        docs_service.documents().batchUpdate(
-            documentId=document_id,
-            body={'requests': requests_list}
+        _, drive_service = get_google_services()
+        
+        # Convert Markdown to structured HTML with Mermaid diagram support
+        html_content = markdown_to_html_with_mermaid(new_content)
+        
+        # Create an in-memory file payload
+        fh = io.BytesIO(html_content.encode('utf-8'))
+        media = MediaIoBaseUpload(fh, mimetype='text/html', resumable=True)
+        
+        # Overwrite the Google Doc with the HTML payload, which triggers conversion
+        drive_service.files().update(
+            fileId=document_id,
+            media_body=media
         ).execute()
-
+        
         return f"Successfully replaced content of document {document_id}."
     except Exception as e:
         return f"Error updating document: {str(e)}"
