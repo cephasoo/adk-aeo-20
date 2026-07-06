@@ -33,55 +33,42 @@ def test_resolve_document_id_search_mock(monkeypatch):
     assert resolved == "resolved-doc-id-456"
 
 def test_read_google_doc_mock(monkeypatch):
-    class MockDocResource:
+    class MockExportRequest:
         def execute(self):
-            return {
-                "body": {
-                    "content": [
-                        {
-                            "paragraph": {
-                                "elements": [
-                                    {"textRun": {"content": "Native Python client mock content."}}
-                                ]
-                            }
-                        }
-                    ]
-                }
-            }
+            return b"Native Python client mock content."
 
-    class MockDocuments:
-        def get(self, documentId):
-            assert documentId == "test-doc-id-123"
-            return MockDocResource()
+    class MockFiles:
+        def export(self, fileId, mimeType):
+            assert fileId == "test-doc-id-123"
+            assert mimeType == "text/plain"
+            return MockExportRequest()
 
-    class MockDocsService:
-        def documents(self):
-            return MockDocuments()
+    class MockDriveService:
+        def files(self):
+            return MockFiles()
 
-    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (MockDocsService(), None))
-    
-    # Bypass title resolution by providing a long valid-looking ID format
-    direct_id = "1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v"
+    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (None, MockDriveService()))
     monkeypatch.setattr("app.tools.google_docs_native.resolve_document_id", lambda val: "test-doc-id-123")
     
-    content = read_google_doc(direct_id)
+    content = read_google_doc("test-doc-id-123")
     assert content == "Native Python client mock content."
 
 def test_create_google_doc_mock(monkeypatch):
-    class MockDocResource:
+    class MockCreateRequest:
         def execute(self):
-            return {"documentId": "created-doc-id-999"}
+            return {"id": "created-doc-id-999"}
 
-    class MockDocuments:
-        def create(self, body):
-            assert body["title"] == "New Document Title"
-            return MockDocResource()
+    class MockFiles:
+        def create(self, body, fields):
+            assert body["name"] == "New Document Title"
+            assert body["mimeType"] == "application/vnd.google-apps.document"
+            return MockCreateRequest()
 
-    class MockDocsService:
-        def documents(self):
-            return MockDocuments()
+    class MockDriveService:
+        def files(self):
+            return MockFiles()
 
-    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (MockDocsService(), None))
+    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (None, MockDriveService()))
     
     res = json.loads(create_google_doc("New Document Title"))
     assert res["status"] == "SUCCESS"
@@ -89,36 +76,30 @@ def test_create_google_doc_mock(monkeypatch):
     assert "created-doc-id-999" in res["url"]
 
 def test_append_google_doc_mock(monkeypatch):
-    class MockBatchRequest:
+    class MockExportRequest:
         def execute(self):
-            return {}
+            return b"<html><body>Existing content.</body></html>"
 
-    class MockDocResource:
+    class MockUpdateRequest:
         def execute(self):
-            return {
-                "body": {
-                    "content": [
-                        {"endIndex": 50}
-                    ]
-                }
-            }
+            return {"id": "test-doc-123"}
 
-    class MockDocuments:
-        def get(self, documentId):
-            return MockDocResource()
-        def batchUpdate(self, documentId, body):
-            assert documentId == "test-doc-123"
-            requests = body["requests"]
-            assert len(requests) == 1
-            assert requests[0]["insertText"]["text"] == "Appended content."
-            assert requests[0]["insertText"]["location"]["index"] == 49
-            return MockBatchRequest()
+    class MockFiles:
+        def export(self, fileId, mimeType):
+            assert fileId == "test-doc-123"
+            assert mimeType == "text/html"
+            return MockExportRequest()
+            
+        def update(self, fileId, media_body):
+            assert fileId == "test-doc-123"
+            assert media_body.size() > 0
+            return MockUpdateRequest()
 
-    class MockDocsService:
-        def documents(self):
-            return MockDocuments()
+    class MockDriveService:
+        def files(self):
+            return MockFiles()
 
-    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (MockDocsService(), None))
+    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (None, MockDriveService()))
     monkeypatch.setattr("app.tools.google_docs_native.resolve_document_id", lambda val: "test-doc-123")
     
     res = append_to_google_doc("test-doc-123", "Appended content.")

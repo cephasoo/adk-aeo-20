@@ -122,21 +122,10 @@ def read_google_doc(document_id_or_title: str) -> str:
     """
     try:
         document_id = resolve_document_id(document_id_or_title)
-        docs_service, _ = get_google_services()
-        doc = docs_service.documents().get(documentId=document_id).execute()
-        
-        body = doc.get('body', {})
-        content = body.get('content', [])
-        text_runs = []
-        
-        for element in content:
-            if 'paragraph' in element:
-                elements = element.get('paragraph', {}).get('elements', [])
-                for elem in elements:
-                    if 'textRun' in elem:
-                        text_runs.append(elem.get('textRun', {}).get('content', ''))
-                        
-        return "".join(text_runs)
+        _, drive_service = get_google_services()
+        # Export the document content as plain text
+        content_bytes = drive_service.files().export(fileId=document_id, mimeType='text/plain').execute()
+        return content_bytes.decode('utf-8')
     except Exception as e:
         return f"Error reading document: {str(e)}"
 
@@ -148,10 +137,13 @@ def create_google_doc(title: str) -> str:
         title: The title of the new document.
     """
     try:
-        docs_service, _ = get_google_services()
-        body = {'title': title}
-        doc = docs_service.documents().create(body=body).execute()
-        doc_id = doc.get('documentId')
+        _, drive_service = get_google_services()
+        file_metadata = {
+            'name': title,
+            'mimeType': 'application/vnd.google-apps.document'
+        }
+        doc = drive_service.files().create(body=file_metadata, fields='id').execute()
+        doc_id = doc.get('id')
         url = f"https://docs.google.com/document/d/{doc_id}/edit"
         return json.dumps({"status": "SUCCESS", "document_id": doc_id, "url": url}, indent=2)
     except Exception as e:
@@ -167,28 +159,38 @@ def append_to_google_doc(document_id_or_title: str, text: str) -> str:
     """
     try:
         document_id = resolve_document_id(document_id_or_title)
-        docs_service, _ = get_google_services()
-        doc = docs_service.documents().get(documentId=document_id).execute()
-        body = doc.get('body', {})
-        content = body.get('content', [])
-        end_index = 1
-        if content:
-            end_index = content[-1].get('endIndex', 1) - 1
-            if end_index < 1:
-                end_index = 1
-                
-        requests_list = [
-            {
-                'insertText': {
-                    'location': {'index': end_index},
-                    'text': text
-                }
-            }
-        ]
+        _, drive_service = get_google_services()
         
-        docs_service.documents().batchUpdate(
-            documentId=document_id,
-            body={'requests': requests_list}
+        # Export existing document content as HTML to preserve formatting
+        html_bytes = drive_service.files().export(fileId=document_id, mimeType='text/html').execute()
+        html_content = html_bytes.decode('utf-8')
+        
+        # Convert appended text to HTML (handling mermaid diagrams if any)
+        append_html = markdown_to_html_with_mermaid(text)
+        
+        # Extract the body contents of the appended HTML and merge
+        from bs4 import BeautifulSoup
+        soup_orig = BeautifulSoup(html_content, 'html.parser')
+        soup_append = BeautifulSoup(append_html, 'html.parser')
+        
+        # Append all children of the append body to the original body
+        if soup_orig.body and soup_append.body:
+            for child in list(soup_append.body.children):
+                soup_orig.body.append(child)
+        else:
+            # Fallback if body tags are missing
+            html_content = html_content.replace("</body>", f"{append_html}</body>")
+            soup_orig = BeautifulSoup(html_content, 'html.parser')
+            
+        updated_html = str(soup_orig)
+        
+        # Write back via Drive API update
+        fh = io.BytesIO(updated_html.encode('utf-8'))
+        media = MediaIoBaseUpload(fh, mimetype='text/html', resumable=True)
+        
+        drive_service.files().update(
+            fileId=document_id,
+            media_body=media
         ).execute()
         
         return f"Successfully appended text to document {document_id}."
