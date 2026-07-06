@@ -23,6 +23,14 @@ from app.tools.seo_tools import (
     audit_hidden_faq_schema
 )
 
+from app.tools.google_docs_native import (
+    read_google_doc,
+    create_google_doc,
+    append_to_google_doc,
+    update_google_doc
+)
+
+
 # Load local environment variables from .env if present
 load_dotenv()
 
@@ -533,7 +541,11 @@ aeo_copilot_agent = LlmAgent(
         audit_brand_aeo_visibility,
         inject_aeo_schema_metafield,
         publish_gutenberg_page,
-        audit_hidden_faq_schema
+        audit_hidden_faq_schema,
+        read_google_doc,
+        create_google_doc,
+        append_to_google_doc,
+        update_google_doc
     ]
 )
 

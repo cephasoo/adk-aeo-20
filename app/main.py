@@ -423,6 +423,59 @@ def handle_incoming_message(chat_id: int, text: str):
                 send_telegram_message(chat_id, f"❌ Invalid authentication token: {e}")
         return
 
+    # Direct Telegram command handler for Google Docs
+    if text_clean.startswith("/gdoc"):
+        from app.tools.google_docs_native import (
+            read_google_doc,
+            create_google_doc,
+            append_to_google_doc,
+            update_google_doc
+        )
+        parts = text_clean.split(None, 2)
+        if len(parts) < 2:
+            usage_text = (
+                "📝 **Google Docs Manager Usage**:\n\n"
+                "• `/gdoc read <document_id_or_title>` - Read document content\n"
+                "• `/gdoc create <title>` - Create a new document\n"
+                "• `/gdoc append <document_id_or_title> | <text>` - Append text to document\n"
+                "• `/gdoc update <document_id_or_title> | <text>` - Replace entire document content"
+            )
+            send_telegram_message(chat_id, usage_text)
+            return
+
+        action = parts[1].lower()
+        action_args = parts[2] if len(parts) > 2 else ""
+
+        if action == "read":
+            if not action_args:
+                send_telegram_message(chat_id, "❌ Usage: `/gdoc read <document_id_or_title>`")
+                return
+            res = read_google_doc(action_args.strip())
+            send_telegram_message(chat_id, res)
+        elif action == "create":
+            if not action_args:
+                send_telegram_message(chat_id, "❌ Usage: `/gdoc create <title>`")
+                return
+            res = create_google_doc(action_args.strip())
+            send_telegram_message(chat_id, res)
+        elif action == "append":
+            if " | " not in action_args:
+                send_telegram_message(chat_id, "❌ Format: `/gdoc append <document_id_or_title> | <text>`")
+                return
+            doc_id_or_title, text_to_append = action_args.split(" | ", 1)
+            res = append_to_google_doc(doc_id_or_title.strip(), text_to_append)
+            send_telegram_message(chat_id, res)
+        elif action == "update":
+            if " | " not in action_args:
+                send_telegram_message(chat_id, "❌ Format: `/gdoc update <document_id_or_title> | <text>`")
+                return
+            doc_id_or_title, new_content = action_args.split(" | ", 1)
+            res = update_google_doc(doc_id_or_title.strip(), new_content)
+            send_telegram_message(chat_id, res)
+        else:
+            send_telegram_message(chat_id, f"❌ Unknown action '{action}'. Use read, create, append, or update.")
+        return
+
     # Trigger the ADK Agent reasoning engine
     try:
         app_name = runner.app_name
@@ -496,6 +549,7 @@ def run_polling():
         {"command": "canonical", "description": "Verify canonical links and duplication"},
         {"command": "schema", "description": "Generate and inject schema markup"},
         {"command": "gsc", "description": "Check Google Search Console index status"},
+        {"command": "gdoc", "description": "Read, create, or edit Google Documents"},
         {"command": "clear", "description": "Wipe session history and start fresh"}
     ]
     try:
