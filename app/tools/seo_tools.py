@@ -165,7 +165,7 @@ def _get_verify_param(url: str) -> bool:
 # 1. ADVANCED ON-PAGE SEO AUDITOR (rendered HTML)
 # =====================================================================
 
-def advanced_seo_audit(wp_post_id_or_url: str) -> str:
+def advanced_seo_audit(wp_post_id_or_url: str, intent: str = "") -> str:
     """
     Connects to the WordPress site, fetches the public rendered frontend HTML of the page,
     and runs 19 technical SEO and AEO checks.
@@ -276,7 +276,7 @@ def advanced_seo_audit(wp_post_id_or_url: str) -> str:
                 return f"Error: WordPress connection failed: {e}"
 
     # 2. Run Audit
-    results = run_audit(html_content, page_url=resolved_url)
+    results = run_audit(html_content, page_url=resolved_url, intent=intent)
 
     # 3. Write Static Report to wp-content/uploads/aeo-audits/
     import time

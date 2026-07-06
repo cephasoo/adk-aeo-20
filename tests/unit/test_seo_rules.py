@@ -185,3 +185,103 @@ def test_oauth_claims_gate(monkeypatch):
 
     res_ok = inject_aeo_schema_metafield(wp_post_id=18, schema_type="FAQ", schema_json="{}", tool_context=ctx)
     assert "Success" in res_ok
+
+def test_image_optimization_rules():
+    # Construct an HTML with failing cases for all new image rules
+    html = """<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test Page</title>
+        <meta property="og:image:width" content="150" /> <!-- Rule 26: dimension below 200 -->
+        <meta property="og:image:height" content="150" />
+        <meta name="twitter:card" content="summary_large_image" />
+    </head>
+    <body>
+        <!-- Rule 22: First image is LCP candidate, lacks fetchpriority and eager loading -->
+        <!-- Rule 20: Legacy format (png) with no picture fallback -->
+        <!-- Rule 21: Missing srcset/sizes responsive hints -->
+        <!-- Rule 23: Non-descriptive filename (8 hex characters) -->
+        <img src="/assets/a3f8b2c1.png" width="400" height="300" />
+        
+        <!-- Rule 25: Decorative image (icon) with verbose alt text > 3 words -->
+        <img src="/icons/chevron.png" alt="This is a simple chevron icon pointing right" width="24" height="24" />
+        
+        <!-- Rule 24: Image not wrapped in figure + figcaption -->
+        <img src="/images/eportfolio-dashboard.png" alt="Dashboard" width="800" height="600" />
+        
+        <!-- Rule 25: SVG without role="img" or labels -->
+        <svg height="100" width="100">
+          <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
+        </svg>
+    </body>
+    </html>"""
+
+    results = run_audit(html, page_url="http://example.com/page/")
+
+    errors = "\n".join(results["errors"])
+    warnings = "\n".join(results["warnings"])
+
+    assert "Image Format" in warnings
+    assert "Responsive Images" in warnings
+    assert "LCP Image Priority" in warnings
+    assert "Image Filename Semantics" in warnings
+    assert "Figure Semantic Wrapping" in warnings
+    assert "Decorative Image Classification" in warnings
+    assert "Social Image Dimensions" in warnings
+
+def test_schema_type_awareness():
+    # 1. Test page with Organization and FAQPage schema (commercial intent)
+    html_commercial = """<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Commercial SaaS Page</title>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "name": "Digication"
+            },
+            {
+              "@type": "FAQPage",
+              "mainEntity": []
+            }
+          ]
+        }
+        </script>
+    </head>
+    <body>
+        <h1>Assessment</h1>
+    </body>
+    </html>"""
+
+    results = run_audit(html_commercial, page_url="http://example.com/", intent="commercial")
+    warnings_comm = "\n".join(results["warnings"])
+    
+    # Should flag Product/SoftwareApplication as missing, FAQPage as deprecated
+    assert "FAQPage" in results["metrics"]["schema_types_deprecated"]
+    assert "SoftwareApplication" in results["metrics"]["schema_types_missing"]
+
+    # 2. Test page with Article schema (informational intent)
+    html_info = """<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Informational Blog</title>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": "How ePortfolio assessment works"
+        }
+        </script>
+    </head>
+    <body>
+        <h1>How ePortfolio assessment works</h1>
+    </body>
+    </html>"""
+
+    results = run_audit(html_info, page_url="http://example.com/", intent="informational")
+    assert "Article" in results["metrics"]["schema_types_present"]
+    assert "Product" not in results["metrics"]["schema_types_missing"]
+

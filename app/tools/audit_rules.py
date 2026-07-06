@@ -131,7 +131,7 @@ REASON: [Brief explanation of why they are flagged]
     except Exception as e:
         return [], f"Semantic alt check fallback (API error: {e})."
 
-def run_audit(html_content: str, page_url: str = "") -> dict:
+def run_audit(html_content: str, page_url: str = "", intent: str = "") -> dict:
     """
     Runs all 19 technical SEO and AEO rules against the HTML content.
     Returns a dictionary of results grouped by severity:
@@ -349,13 +349,25 @@ def run_audit(html_content: str, page_url: str = "") -> dict:
     )
 
     # Body plain text extraction
+    # Strip script/style/noscript tags to prevent JSON-LD and JS from
+    # polluting word counts and sentence length calculations.
     if soup:
-        body_tag = soup.find('body')
-        body_text = body_tag.get_text() if body_tag else soup.get_text()
+        import copy
+        temp_soup = copy.copy(soup)
+        for noise_tag in temp_soup.find_all(['script', 'style', 'noscript']):
+            noise_tag.decompose()
+        body_tag = temp_soup.find('body')
+        # Use separator='\n' so each block element becomes its own line,
+        # preventing headings/list items from merging into one run-on sentence.
+        body_text = body_tag.get_text(separator='\n') if body_tag else temp_soup.get_text(separator='\n')
     else:
         # Strip script/style tags first
-        clean_html = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html_content, flags=re.IGNORECASE | re.DOTALL)
-        body_text = re.sub(r'<[^>]+>', ' ', clean_html)
+        clean_html = re.sub(r'<(script|style|noscript)[^>]*>.*?</\1>', '', html_content, flags=re.IGNORECASE | re.DOTALL)
+        body_text = re.sub(r'<[^>]+>', '\n', clean_html)
+
+    # Collapse whitespace within lines but preserve line breaks
+    body_text = re.sub(r'[^\S\n]+', ' ', body_text)
+    body_text = re.sub(r'\n\s*\n', '\n', body_text).strip()
 
     words = [w for w in body_text.split() if w]
     word_count = len(words)
@@ -370,8 +382,10 @@ def run_audit(html_content: str, page_url: str = "") -> dict:
     )
 
     # 10. Readability (Average Sentence Length)
-    # Split text into sentences using simple punctuation check
-    sentences = [s.strip() for s in re.split(r'[.!?]+', body_text) if s.strip()]
+    # Split on punctuation terminators AND newlines, since bullet-list pages
+    # use line breaks rather than periods to delimit distinct statements.
+    raw_segments = re.split(r'[.!?]+|\n', body_text)
+    sentences = [s.strip() for s in raw_segments if len(s.strip().split()) >= 3]
     sentence_count = len(sentences)
     avg_sentence_len = (word_count / sentence_count) if sentence_count > 0 else 0
     metrics['avg_sentence_len'] = avg_sentence_len
@@ -479,6 +493,459 @@ def run_audit(html_content: str, page_url: str = "") -> dict:
         first_img_lazy,
         "First body image has loading='lazy' (demotes Largest Contentful Paint). Change to eager.",
         "First image loaded eagerly (improves LCP score).",
+        is_warning=True
+    )
+
+    # ==========================================
+    # IMAGE OPTIMIZATION RULES (20-26)
+    # ==========================================
+
+    # 20. Next-Gen Image Format Detection
+    modern_formats = {'webp', 'avif', 'svg'}
+    legacy_formats = {'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'}
+    legacy_image_count = 0
+    modern_image_count = 0
+    legacy_only_images = []  # images with legacy format AND no <picture> fallback
+
+    for img in images:
+        src = img.get('src', '')
+        if not src:
+            continue
+        # Strip query params and fragments to get clean filename
+        clean_src = src.split('?')[0].split('#')[0]
+        ext = os.path.splitext(clean_src)[1].lstrip('.').lower()
+        if ext in modern_formats:
+            modern_image_count += 1
+        elif ext in legacy_formats:
+            # Check if this image is inside a <picture> element with modern sources (BS4 only)
+            has_picture_fallback = False
+            if soup:
+                # Find the actual img tag in the soup by src
+                img_tag = soup.find('img', attrs={'src': src})
+                if img_tag:
+                    picture_parent = img_tag.find_parent('picture')
+                    if picture_parent:
+                        sources = picture_parent.find_all('source')
+                        for source in sources:
+                            source_type = source.get('type', '').lower()
+                            source_srcset = source.get('srcset', '').lower()
+                            if any(fmt in source_type or fmt in source_srcset for fmt in modern_formats):
+                                has_picture_fallback = True
+                                break
+            if has_picture_fallback:
+                modern_image_count += 1  # Has modern fallback via <picture>
+            else:
+                legacy_image_count += 1
+                legacy_only_images.append(os.path.basename(clean_src))
+
+    metrics['legacy_image_count'] = legacy_image_count
+    metrics['modern_image_count'] = modern_image_count
+    total_format_images = legacy_image_count + modern_image_count
+
+    legacy_ratio = (legacy_image_count / total_format_images) if total_format_images > 0 else 0
+    add_result(
+        "Image Format",
+        legacy_ratio > 0.5,
+        f"{legacy_image_count} of {total_format_images} images use legacy-only formats (no <picture> fallback). "
+        f"Examples: {', '.join(legacy_only_images[:3])}. Consider converting to WebP/AVIF.",
+        f"Good image format usage: {modern_image_count} modern vs {legacy_image_count} legacy format(s).",
+        is_warning=True
+    )
+
+    # 21. Responsive Image Audit (srcset/sizes)
+    responsive_image_count = 0
+    missing_responsive = []
+    content_images_for_responsive = []
+
+    for img in images:
+        src = img.get('src', '')
+        # Exclude small images (icons/logos)
+        src_lower = src.lower()
+        if 'icon' in src_lower or 'logo' in src_lower:
+            continue
+        # Exclude by explicit dimensions <= 100px
+        try:
+            w = int(img.get('width', 0))
+            h = int(img.get('height', 0))
+            if 0 < w <= 100 or 0 < h <= 100:
+                continue
+        except (ValueError, TypeError):
+            pass
+        content_images_for_responsive.append(img)
+
+        if img.get('srcset'):
+            responsive_image_count += 1
+            # Check if sizes attribute is also present
+            if not img.get('sizes'):
+                missing_responsive.append(os.path.basename(src.split('?')[0]))
+        else:
+            missing_responsive.append(os.path.basename(src.split('?')[0]))
+
+    metrics['responsive_image_count'] = responsive_image_count
+    total_content_responsive = len(content_images_for_responsive)
+    non_responsive_ratio = (len(missing_responsive) / total_content_responsive) if total_content_responsive > 0 else 0
+
+    add_result(
+        "Responsive Images",
+        non_responsive_ratio > 0.5,
+        f"{len(missing_responsive)} of {total_content_responsive} content images lack srcset/sizes responsive variants. "
+        f"Examples: {', '.join(missing_responsive[:3])}.",
+        f"{responsive_image_count} of {total_content_responsive} content images have responsive srcset attributes.",
+        is_warning=True
+    )
+
+    # 22. LCP Image fetchpriority
+    lcp_has_priority = False
+    lcp_message = ""
+    if images:
+        first_img = images[0]
+        has_fetchpriority = first_img.get('fetchpriority', '').lower() == 'high'
+        has_eager_loading = first_img.get('loading', '').lower() == 'eager'
+        lcp_has_priority = has_fetchpriority or has_eager_loading
+        if has_fetchpriority:
+            lcp_message = "First image has fetchpriority='high' for optimal LCP."
+        elif has_eager_loading:
+            lcp_message = "First image has loading='eager' (consider also adding fetchpriority='high')."
+    else:
+        lcp_has_priority = True  # No images, no issue
+        lcp_message = "No images found to check."
+
+    add_result(
+        "LCP Image Priority",
+        not lcp_has_priority,
+        "First body image is missing fetchpriority='high' and loading='eager'. "
+        "Add fetchpriority='high' to the LCP candidate image for faster rendering.",
+        lcp_message,
+        is_warning=True
+    )
+
+    # 23. Image Filename Semantics
+    non_descriptive_filenames = []
+    descriptive_count = 0
+    # Patterns for non-descriptive filenames
+    hash_pattern = re.compile(r'[0-9a-f]{8,}', re.IGNORECASE)
+    sequential_pattern = re.compile(r'^(IMG_|DSC_|Screenshot_|image)\d+', re.IGNORECASE)
+    uuid_pattern = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', re.IGNORECASE)
+    numeric_pattern = re.compile(r'^\d+$')
+    single_char_pattern = re.compile(r'^[a-zA-Z0-9]$')
+
+    for img in images:
+        src = img.get('src', '')
+        if not src:
+            continue
+        # Extract filename, strip query params
+        clean_src = src.split('?')[0].split('#')[0]
+        filename = os.path.basename(clean_src)
+        name_without_ext = os.path.splitext(filename)[0]
+
+        if not name_without_ext:
+            continue
+
+        is_non_descriptive = False
+        # Check single character or purely numeric
+        if single_char_pattern.match(name_without_ext) or numeric_pattern.match(name_without_ext):
+            is_non_descriptive = True
+        # Check UUID-like
+        elif uuid_pattern.search(name_without_ext):
+            is_non_descriptive = True
+        # Check sequential naming patterns
+        elif sequential_pattern.match(name_without_ext):
+            is_non_descriptive = True
+        # Check hash-like (8+ consecutive hex chars making up most of the name)
+        elif hash_pattern.match(name_without_ext) and len(name_without_ext) >= 8:
+            is_non_descriptive = True
+
+        if is_non_descriptive:
+            non_descriptive_filenames.append(filename)
+        else:
+            descriptive_count += 1
+
+    metrics['descriptive_filenames'] = descriptive_count
+
+    add_result(
+        "Image Filename Semantics",
+        len(non_descriptive_filenames) > 0,
+        f"Found {len(non_descriptive_filenames)} non-descriptive image filename(s): "
+        f"{', '.join(non_descriptive_filenames[:5])}. Use descriptive, keyword-rich filenames.",
+        "All image filenames are descriptive and SEO-friendly.",
+        is_warning=True
+    )
+
+    # 24. Figure + Figcaption Semantic Wrapping (BS4 path only)
+    if soup:
+        figure_wrapped_count = 0
+        figure_eligible_images = 0
+
+        for img_tag in soup.find_all('img'):
+            src = img_tag.get('src', '').lower()
+            # Exclude small/icon images
+            if 'icon' in src or 'logo' in src:
+                continue
+            try:
+                w = int(img_tag.get('width', 0))
+                h = int(img_tag.get('height', 0))
+                if 0 < w < 100 or 0 < h < 100:
+                    continue
+            except (ValueError, TypeError):
+                pass
+
+            figure_eligible_images += 1
+
+            # Check if parent or grandparent is <figure>
+            parent = img_tag.parent
+            grandparent = parent.parent if parent else None
+            figure_el = None
+            if parent and parent.name == 'figure':
+                figure_el = parent
+            elif grandparent and grandparent.name == 'figure':
+                figure_el = grandparent
+
+            if figure_el:
+                # Check for <figcaption> sibling within the figure
+                if figure_el.find('figcaption'):
+                    figure_wrapped_count += 1
+
+        figure_ratio = (figure_wrapped_count / figure_eligible_images) if figure_eligible_images > 0 else 1.0
+        add_result(
+            "Figure Semantic Wrapping",
+            figure_ratio < 0.5,
+            f"Only {figure_wrapped_count} of {figure_eligible_images} content images are wrapped in "
+            f"<figure> with <figcaption>. Semantic wrapping improves accessibility and SEO context.",
+            f"{figure_wrapped_count} of {figure_eligible_images} content images have proper <figure>/<figcaption> wrapping.",
+            is_warning=True
+        )
+    else:
+        # Regex fallback: skip this rule, as detecting parent elements is unreliable
+        passes.append("**Figure Semantic Wrapping**: Skipped (requires HTML parser for DOM traversal).")
+
+    # 25. Decorative Image Classification + SVG Accessibility
+    decorative_patterns = ['icon', 'spacer', 'divider', 'bullet', 'arrow', 'chevron']
+    over_described_decorative = []
+
+    for img in images:
+        src = img.get('src', '').lower()
+        alt = img.get('alt', '').strip()
+
+        # Determine if image is likely decorative
+        is_decorative = False
+        if any(pattern in src for pattern in decorative_patterns):
+            is_decorative = True
+        else:
+            try:
+                w = int(img.get('width', 0))
+                h = int(img.get('height', 0))
+                if 0 < w <= 48 and 0 < h <= 48:
+                    is_decorative = True
+            except (ValueError, TypeError):
+                pass
+
+        # If decorative AND alt text has > 3 words, flag as over-described
+        if is_decorative and alt and len(alt.split()) > 3:
+            over_described_decorative.append(os.path.basename(img.get('src', '')))
+
+    # Part B: SVG Accessibility (BS4 only)
+    inaccessible_svgs = 0
+    total_svgs = 0
+    if soup:
+        body_tag_svg = soup.find('body')
+        svg_container = body_tag_svg if body_tag_svg else soup
+        for svg_tag in svg_container.find_all('svg'):
+            total_svgs += 1
+            has_role = svg_tag.get('role', '').lower() == 'img'
+            has_aria_label = bool(svg_tag.get('aria-label'))
+            has_aria_labelledby = bool(svg_tag.get('aria-labelledby'))
+            if not (has_role and (has_aria_label or has_aria_labelledby)):
+                inaccessible_svgs += 1
+
+    has_decorative_issue = len(over_described_decorative) > 0 or inaccessible_svgs > 0
+    error_parts_decorative = []
+    if over_described_decorative:
+        error_parts_decorative.append(
+            f"{len(over_described_decorative)} decorative image(s) have verbose alt text (>3 words): "
+            f"{', '.join(over_described_decorative[:3])}. Use alt='' for decorative images."
+        )
+    if inaccessible_svgs > 0:
+        error_parts_decorative.append(
+            f"{inaccessible_svgs} of {total_svgs} inline SVG(s) missing role='img' + aria-label/aria-labelledby."
+        )
+
+    add_result(
+        "Decorative Image Classification",
+        has_decorative_issue,
+        " ".join(error_parts_decorative),
+        f"Decorative images properly classified. "
+        f"{total_svgs} inline SVG(s) have correct accessibility attributes." if total_svgs > 0
+        else "Decorative images properly classified. No inline SVGs found.",
+        is_warning=True
+    )
+
+    # 26. OG/Twitter Image Dimension Hints
+    og_width = ""
+    og_height = ""
+    twitter_card_type = ""
+
+    if soup:
+        og_w_tag = soup.find('meta', attrs={'property': 'og:image:width'})
+        og_h_tag = soup.find('meta', attrs={'property': 'og:image:height'})
+        og_width = og_w_tag.get('content', '').strip() if og_w_tag else ""
+        og_height = og_h_tag.get('content', '').strip() if og_h_tag else ""
+        tc_tag = soup.find('meta', attrs={'name': 'twitter:card'})
+        twitter_card_type = tc_tag.get('content', '').strip().lower() if tc_tag else ""
+    else:
+        og_w_match = re.search(r'property=["\']og:image:width["\'][^>]*content=["\'](\d+)["\']', html_content, re.IGNORECASE)
+        og_h_match = re.search(r'property=["\']og:image:height["\'][^>]*content=["\'](\d+)["\']', html_content, re.IGNORECASE)
+        og_width = og_w_match.group(1) if og_w_match else ""
+        og_height = og_h_match.group(1) if og_h_match else ""
+        tc_match = re.search(r'name=["\']twitter:card["\'][^>]*content=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
+        twitter_card_type = tc_match.group(1).strip().lower() if tc_match else ""
+
+    social_dim_issues = []
+
+    if not og_width or not og_height:
+        social_dim_issues.append("og:image:width and/or og:image:height meta tags are missing.")
+    else:
+        try:
+            w = int(og_width)
+            h = int(og_height)
+            if w < 200 or h < 200:
+                social_dim_issues.append(
+                    f"OG image dimensions ({w}x{h}) are below minimum 200x200. "
+                    f"Recommended: 1200x630."
+                )
+        except (ValueError, TypeError):
+            social_dim_issues.append(f"OG image dimensions are not valid integers: '{og_width}x{og_height}'.")
+
+    if twitter_card_type == 'summary_large_image' and og_width and og_height:
+        try:
+            w = int(og_width)
+            h = int(og_height)
+            if w < 300 or h < 157:
+                social_dim_issues.append(
+                    f"Twitter summary_large_image requires minimum 300x157, found {w}x{h}."
+                )
+        except (ValueError, TypeError):
+            pass
+
+    add_result(
+        "Social Image Dimensions",
+        len(social_dim_issues) > 0,
+        " ".join(social_dim_issues),
+        f"OG image dimensions specified ({og_width}x{og_height}) and meet platform minimums.",
+        is_warning=True
+    )
+
+    # 27. Dynamic Schema Type Awareness (Frontier Enhancement)
+    SCHEMA_REGISTRY = {
+        "informational": {
+            "eligible": ["Article", "Course", "HowTo", "QAPage", "Dataset"],
+            "deprecated_rich_results": ["FAQPage"],  # May 2026 deprecation
+        },
+        "commercial": {
+            "eligible": ["Product", "SoftwareApplication", "Offer", "Review", "AggregateRating"],
+        },
+        "organization": {
+            "eligible": ["Organization", "LocalBusiness", "Person", "WebSite", "ProfilePage"],
+        },
+        "media": {
+            "eligible": ["VideoObject", "Podcast", "Book", "Recipe", "Event"],
+        },
+        "compliance": {
+            "eligible": ["MedicalWebPage", "HealthTopicContent"],  # YMYL-specific
+        },
+    }
+
+    import json
+    schema_types_present = set()
+
+    if soup:
+        script_tags = soup.find_all('script', attrs={'type': 'application/ld+json'})
+        for tag in script_tags:
+            try:
+                data = json.loads(tag.get_text() or '')
+                def extract_types(obj):
+                    if isinstance(obj, dict):
+                        if "@type" in obj:
+                            t = obj["@type"]
+                            if isinstance(t, list):
+                                for item in t:
+                                    if isinstance(item, str):
+                                        schema_types_present.add(item)
+                            elif isinstance(t, str):
+                                schema_types_present.add(t)
+                        for v in obj.values():
+                            extract_types(v)
+                    elif isinstance(obj, list):
+                        for item in obj:
+                            extract_types(item)
+                extract_types(data)
+            except Exception:
+                pass
+    else:
+        # Regex fallback
+        matches = re.findall(r'["\']@type["\']\s*:\s*["\']([^"\']+)["\']', html_content)
+        for m in matches:
+            schema_types_present.add(m)
+
+    schema_types_present = list(schema_types_present)
+    metrics['schema_types_present'] = schema_types_present
+
+    # Determine missing relevant types based on intent
+    missing_relevant = []
+    deprecated_present = []
+
+    intent_clean = (intent or "").lower().strip()
+    mapped_registry_keys = []
+    if "informational" in intent_clean:
+        mapped_registry_keys.append("informational")
+    if "commercial" in intent_clean or "transactional" in intent_clean:
+        mapped_registry_keys.append("commercial")
+
+    # Always check organization
+    mapped_registry_keys.append("organization")
+
+    for r_key in mapped_registry_keys:
+        reg = SCHEMA_REGISTRY.get(r_key, {})
+        for el in reg.get("eligible", []):
+            if el not in schema_types_present:
+                missing_relevant.append(el)
+        for dep in reg.get("deprecated_rich_results", []):
+            if dep in schema_types_present:
+                deprecated_present.append(dep)
+
+    # Check deprecated schemas from other sections
+    for r_key, reg in SCHEMA_REGISTRY.items():
+        if r_key not in mapped_registry_keys:
+            for dep in reg.get("deprecated_rich_results", []):
+                if dep in schema_types_present:
+                    deprecated_present.append(dep)
+
+    # De-duplicate lists
+    missing_relevant = sorted(list(set(missing_relevant)))
+    deprecated_present = sorted(list(set(deprecated_present)))
+
+    metrics['schema_types_missing'] = missing_relevant
+    metrics['schema_types_deprecated'] = deprecated_present
+
+    schema_warning_messages = []
+    if deprecated_present:
+        schema_warning_messages.append(
+            f"Deprecated schema types found: {', '.join(deprecated_present)}. "
+            "FAQPage schema is no longer supported by Google for rich results (deprecated May 2026), but is harmless to keep."
+        )
+    if missing_relevant:
+        schema_warning_messages.append(
+            f"Missing eligible schema types for intent '{intent_clean or 'unclassified'}': {', '.join(missing_relevant)}. "
+            "Consider adding these schemas to improve semantic search visibility."
+        )
+
+    has_schema_issue = len(schema_warning_messages) > 0
+
+    add_result(
+        "Schema Type Awareness",
+        has_schema_issue,
+        " ".join(schema_warning_messages),
+        f"Structured schema types parsed successfully: {', '.join(schema_types_present)}. "
+        "No deprecated or missing relevant schemas flagged.",
         is_warning=True
     )
 
