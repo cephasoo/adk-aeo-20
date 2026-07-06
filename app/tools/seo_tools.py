@@ -357,18 +357,47 @@ def advanced_seo_audit(wp_post_id_or_url: str) -> str:
 
 def serp_position_tracker(target_url: str, search_query: str) -> str:
     """
-    Checks the ranking position of a target URL in Google Search for a search query.
+    Checks the ranking position of a target URL in Google Search, audits SERP features, 
+    tracks paid Google Ads, and semantically classifies search query intent using Gemini.
     """
     serpapi_key = os.environ.get("SERPAPI_API_KEY")
     if not serpapi_key:
         # Mock mode fallback
         return (
             f"### SERP Position Tracker (MOCK)\n"
-            f"- Query: '{search_query}'\n"
-            f"- Target URL: {target_url}\n"
-            f"- Position: **#3**\n"
-            f"- SERP Features: Answer Box (Featured Snippet) present, People Also Ask (PAA) present."
+            f"- **Query**: `{search_query}`\n"
+            f"- **Target URL**: `{target_url}`\n"
+            f"- **Organic Position**: **#3**\n"
+            f"- **Search Intent**: `Informational` (0 top ads, featured snippet present)\n"
+            f"\n"
+            f"#### Paid Advertisement Placements:\n"
+            f"- [ ] **Google Search Ads**: Not running paid ads.\n"
+            f"\n"
+            f"#### SERP Feature Placements:\n"
+            f"- [ ] **Featured Snippet**: Not ranking (Held by: wikipedia.org)\n"
+            f"- [x] **People Also Ask (PAA)**: Ranking under question: *\"What is an ePortfolio assessment?\"* (Link: {target_url}/blog/eportfolio-assessment)\n"
+            f"- [ ] **Knowledge Graph**: Not cited.\n"
+            f"- [ ] **Local Pack**: Not ranking.\n"
+            f"\n"
+            f"#### Top Ranking Competitors (Organic):\n"
+            f"1. **Wikipedia** (wikipedia.org) - An electronic portfolio is a collection of electronic evidence assembled and managed by a user.\n"
+            f"2. **Educause** (educause.edu) - E-portfolios are a valuable tool for learning, assessment, and career planning.\n"
+            f"3. **Clemson University** (clemson.edu) - Portfolio assessment is a term used to describe the collection of student work over time."
         )
+
+    # 1. Semantically Classify Intent using a lightweight LLM call
+    intent = "Informational"  # Safe default
+    try:
+        from app.agent import model
+        prompt = (
+            f"Classify the search intent of the query '{search_query}' into exactly one of: "
+            f"Informational, Navigational, Commercial, Transactional. Respond with ONLY the category name."
+        )
+        # Call model synchronously using the API client
+        response = model.api_client.models.generate_content(model=model.model, contents=prompt)
+        intent = response.text.strip().replace(".", "").replace('"', '').replace("'", "")
+    except Exception as e:
+        print(f"[!] Warning: Failed to classify search intent via LLM: {e}")
 
     try:
         response = requests.get(
@@ -380,37 +409,101 @@ def serp_position_tracker(target_url: str, search_query: str) -> str:
                 "gl": "us",
                 "hl": "en"
             },
-            timeout=10
+            timeout=15
         )
         if response.status_code != 200:
             return f"Error: SerpAPI request failed with status code {response.status_code}."
 
         data = response.json()
         organic_results = data.get("organic_results", [])
+        ads_results = data.get("ads", [])
+        shopping_results = data.get("shopping_results", [])
 
-        position = -1
+        # 2. Audit Organic Position
+        organic_position = -1
         for item in organic_results:
             link = item.get("link", "")
             if target_url.rstrip("/") in link.rstrip("/"):
-                position = item.get("position", -1)
+                organic_position = item.get("position", -1)
                 break
 
-        features = []
-        if "answer_box" in data:
-            features.append("Answer Box (Featured Snippet)")
-        if "related_questions" in data:
-            features.append("People Also Ask (PAA)")
-        if "knowledge_graph" in data:
-            features.append("Knowledge Graph")
+        # 3. Audit Paid Google Ads
+        running_paid_ads = False
+        ad_position_str = "Not running paid ads."
+        for idx, ad in enumerate(ads_results):
+            ad_link = ad.get("link") or ad.get("displayed_link", "")
+            if target_url.rstrip("/") in ad_link.rstrip("/"):
+                running_paid_ads = True
+                block_pos = ad.get("block_position", "top")
+                ad_position_str = f"Ranking in Paid Ads at Position #{idx + 1} ({block_pos} block)"
+                break
 
-        features_str = ", ".join(features) if features else "None detected"
+        # 4. Audit Featured Snippets (Answer Box)
+        featured_snippet_str = "Not ranking"
+        answer_box = data.get("answer_box", {})
+        if answer_box:
+            ab_link = answer_box.get("link") or answer_box.get("displayed_link", "")
+            if target_url.rstrip("/") in ab_link.rstrip("/"):
+                featured_snippet_str = "Ranking as Featured Snippet (Position #1)"
+            else:
+                featured_snippet_str = f"Not ranking (Held by: {answer_box.get('displayed_link', 'Unknown')})"
 
+        # 5. Audit People Also Ask (PAA)
+        paa_ranking_str = "Not ranking"
+        related_questions = data.get("related_questions", [])
+        for q in related_questions:
+            q_link = q.get("link") or q.get("source", {}).get("link", "")
+            if target_url.rstrip("/") in q_link.rstrip("/"):
+                paa_ranking_str = f"Ranking under question: *\"{q.get('question', '')}\"* (Link: {q_link})"
+                break
+
+        # 6. Audit Knowledge Graph
+        kg_ranking_str = "Not cited"
+        knowledge_graph = data.get("knowledge_graph", {})
+        if knowledge_graph:
+            kg_web = knowledge_graph.get("website") or knowledge_graph.get("source", {}).get("link", "")
+            if target_url.rstrip("/") in kg_web.rstrip("/"):
+                kg_ranking_str = "Primary website citation in the Knowledge Graph Panel"
+
+        # 7. Audit Local Pack
+        local_ranking_str = "Not ranking"
+        local_places = data.get("local_results", {}).get("places", []) if isinstance(data.get("local_results"), dict) else data.get("local_results", [])
+        if isinstance(local_places, list):
+            for idx, place in enumerate(local_places):
+                place_web = place.get("website") or place.get("links", {}).get("website", "")
+                if target_url.rstrip("/") in place_web.rstrip("/"):
+                    local_ranking_str = f"Ranking in Local Pack Position #{idx + 1} for business '{place.get('title', 'Unknown')}'"
+                    break
+
+        # 8. Competitor Profiling (Collect top 3 organic results for Exclusion Audits)
+        competitors = []
+        for idx, item in enumerate(organic_results[:3]):
+            title = item.get("title", "")
+            snippet = item.get("snippet", "")
+            link = item.get("link", "")
+            domain = link.split("//")[-1].split("/")[0] if "//" in link else link
+            competitors.append(f"{idx + 1}. **{title}** ({domain}) - {snippet}")
+        competitors_str = "\n".join(competitors) if competitors else "No competitor data available."
+
+        # Compile final report
         report = [
             f"### SERP Tracking Report",
             f"- **Query**: `{search_query}`",
             f"- **Target URL**: `{target_url}`",
-            f"- **Ranking Position**: " + (f"**#{position}**" if position != -1 else "**Not found in top 100 organic results**"),
-            f"- **SERP Features**: {features_str}"
+            f"- **Organic Position**: " + (f"**#{organic_position}**" if organic_position != -1 else "**Not found in top 100 organic results**"),
+            f"- **Search Intent**: `{intent}`",
+            f"\n"
+            f"#### Paid Advertisement Placements:",
+            f"- {'[x]' if running_paid_ads else '[ ]'} **Google Search Ads**: {ad_position_str}",
+            f"\n"
+            f"#### SERP Feature Placements:",
+            f"- {'[x]' if 'Position #1' in featured_snippet_str else '[ ]'} **Featured Snippet**: {featured_snippet_str}",
+            f"- {'[x]' if 'Ranking under' in paa_ranking_str else '[ ]'} **People Also Ask (PAA)**: {paa_ranking_str}",
+            f"- {'[x]' if 'Primary website' in kg_ranking_str else '[ ]'} **Knowledge Graph**: {kg_ranking_str}",
+            f"- {'[x]' if 'Position #' in local_ranking_str else '[ ]'} **Local Pack**: {local_ranking_str}",
+            f"\n"
+            f"#### Top Ranking Competitors (Organic):",
+            f"{competitors_str}"
         ]
         return "\n".join(report)
     except Exception as e:
