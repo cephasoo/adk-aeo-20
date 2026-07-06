@@ -1,5 +1,6 @@
 import os
 import re
+import asyncio
 import requests
 from google.adk.agents import LlmAgent
 from google.adk.models import Gemini
@@ -53,22 +54,57 @@ try:
     original_generate_content_sync = model.api_client.models.generate_content
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=2, min=4, max=30),
+        stop=stop_after_attempt(6),
+        wait=wait_exponential(multiplier=2, min=5, max=60),
         retry=retry_if_transient_error,
         reraise=True
     )
     async def retried_generate_content_async(*args, **kwargs):
-        return await original_generate_content_async(*args, **kwargs)
+        c = kwargs.get('contents') or (args[1] if len(args) > 1 else None)
+        if isinstance(c, list) and len(c) > 0:
+            last_chunk = c[-1]
+            role = getattr(last_chunk, 'role', None)
+            parts = getattr(last_chunk, 'parts', None) or []
+            print(f"[*] generate_content_async: dispatched turn {len(c)-1} (role={role}, parts_len={len(parts)})")
+            for j, p in enumerate(parts):
+                txt = p.text[:100].replace('\n', ' ') if p.text else None
+                if txt:
+                    txt = txt.encode('ascii', errors='replace').decode('ascii')
+                fc = p.function_call.name if p.function_call else None
+                fr = p.function_response.name if p.function_response else None
+                print(f"    -> Part {j}: text={txt}, function_call={fc}, function_response={fr}")
+        else:
+            print(f"[*] generate_content_async input contents length: {len(c) if isinstance(c, list) else 1}")
+
+        try:
+            return await original_generate_content_async(*args, **kwargs)
+        except ClientError as ce:
+            status_code = getattr(ce, "status_code", getattr(ce, "code", None))
+            if status_code == 429 or "429" in str(ce) or "RESOURCE_EXHAUSTED" in str(ce):
+                match = re.search(r"retry in (\d+\.?\d*)s", str(ce))
+                delay = float(match.group(1)) + 1.0 if match else 45.0
+                print(f"[!] Rate limit hit (429). Sleeping for {delay:.2f} seconds before retrying...")
+                await asyncio.sleep(delay)
+            raise ce
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=2, min=4, max=30),
+        stop=stop_after_attempt(6),
+        wait=wait_exponential(multiplier=2, min=5, max=60),
         retry=retry_if_transient_error,
         reraise=True
     )
     def retried_generate_content_sync(*args, **kwargs):
-        return original_generate_content_sync(*args, **kwargs)
+        import time
+        try:
+            return original_generate_content_sync(*args, **kwargs)
+        except ClientError as ce:
+            status_code = getattr(ce, "status_code", getattr(ce, "code", None))
+            if status_code == 429 or "429" in str(ce) or "RESOURCE_EXHAUSTED" in str(ce):
+                match = re.search(r"retry in (\d+\.?\d*)s", str(ce))
+                delay = float(match.group(1)) + 1.0 if match else 45.0
+                print(f"[!] Rate limit hit (429). Sleeping for {delay:.2f} seconds before retrying...")
+                time.sleep(delay)
+            raise ce
 
     model.api_client.aio.models.generate_content = retried_generate_content_async
     model.api_client.models.generate_content = retried_generate_content_sync
@@ -445,6 +481,7 @@ def publish_gutenberg_page(title: str, content_html: str, status: str = "draft",
 aeo_copilot_agent = LlmAgent(
     name="GutenbergAeoCopilot",
     model=model,
+    mode="chat",
     instruction=(
         "You are an expert digital marketing agent for Sonnet and Prose.\n"
         "Your capabilities include:\n"

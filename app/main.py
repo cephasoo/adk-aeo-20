@@ -186,6 +186,92 @@ def restore_telegram_session(chat_id: int, app_name: str, session_id: str):
     except Exception as e:
         print(f"[!] Warning: Failed to restore session from Firestore: {e}")
 
+def prune_session_history_with_summary(sess, max_turns: int = 7):
+    """Groups events by invocation_id. Summarizes excess turns recursively using Gemini and prepends as context."""
+    if not sess.events:
+        return sess
+
+    import uuid
+    from google.adk.events import Event
+
+    # Group events by invocation_id while preserving chronological order
+    groups = []
+    current_id = None
+    current_group = []
+
+    # Filter out existing summary turns during the grouping step
+    active_events = [e for e in sess.events if e.invocation_id != "historical_summary"]
+    existing_summary_event = next((e for e in sess.events if e.invocation_id == "historical_summary" and e.author == "user"), None)
+    old_summary = existing_summary_event.output.replace("[System Summary of earlier turns: ", "").rstrip("]") if existing_summary_event else None
+
+    for event in active_events:
+        inv_id = getattr(event, "invocation_id", None) or ""
+        if inv_id != current_id:
+            if current_group:
+                groups.append(current_group)
+            current_group = [event]
+            current_id = inv_id
+        else:
+            current_group.append(event)
+    if current_group:
+        groups.append(current_group)
+
+    # If the number of unique invocation groups exceeds max_turns, summarize the excess ones
+    if len(groups) > max_turns:
+        excess_groups = groups[:-max_turns]
+        keep_groups = groups[-max_turns:]
+
+        # Serialize excess logs for summarization
+        log_lines = []
+        for g in excess_groups:
+            for e in g:
+                log_lines.append(f"{e.author}: {e.output[:300] if e.output else ''}")
+        excess_logs = "\n".join(log_lines)
+
+        # Call model to summarize
+        from app.agent import model
+        prompt = f"Summarize the following conversation logs and tool interactions in under 50 words: \n{excess_logs}"
+        
+        # If we have an old summary, recursively merge it
+        if old_summary:
+            prompt = (
+                f"Merge the following existing summary and the new logs into a single cohesive summary under 50 words:\n"
+                f"Existing: {old_summary}\n"
+                f"New Logs:\n{excess_logs}"
+            )
+
+        try:
+            summary_text = ""
+            # Call model synchronously (since we are running inside the polling handler thread)
+            response = model.api_client.models.generate_content(model=model.model, contents=prompt)
+            summary_text = response.text.strip()
+        except Exception as e:
+            print(f"[!] Warning: Failed to generate conversation summary: {e}")
+            summary_text = old_summary or "Earlier logs pruned."
+
+        # Construct the special summary turn events
+        summary_event_user = Event(
+            id=str(uuid.uuid4()),
+            invocation_id="historical_summary",
+            author="user",
+            output=f"[System Summary of earlier turns: {summary_text}]"
+        )
+        summary_event_agent = Event(
+            id=str(uuid.uuid4()),
+            invocation_id="historical_summary",
+            author="GutenbergAeoCopilot",
+            output="Acknowledged. I will retain this context."
+        )
+
+        # Re-compile events: summary turn + kept turns
+        pruned_events = [summary_event_user, summary_event_agent]
+        for g in keep_groups:
+            pruned_events.extend(g)
+        sess.events = pruned_events
+        print(f"[*] Pruned session: summarized {len(excess_groups)} turns. Retained last {max_turns} turns.")
+
+    return sess
+
 def save_telegram_session(chat_id: int, app_name: str, session_id: str):
     """Saves the conversation session back to Firestore."""
     if db is None:
@@ -196,6 +282,8 @@ def save_telegram_session(chat_id: int, app_name: str, session_id: str):
             if user_id in runner.session_service.sessions[app_name]:
                 sess = runner.session_service.sessions[app_name][user_id].get(session_id)
                 if sess:
+                    # Prune history using recursive summarization (keep last 7 turns raw)
+                    sess = prune_session_history_with_summary(sess, max_turns=7)
                     sess_json = sess.model_dump_json()
                     doc_ref = db.collection("telegram_sessions").document(user_id)
                     doc_ref.set({"session_json": sess_json, "updated_at": firestore.SERVER_TIMESTAMP})
