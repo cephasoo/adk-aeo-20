@@ -445,7 +445,8 @@ def run_polling():
         {"command": "redirect", "description": "Analyze HTTP redirect chains"},
         {"command": "canonical", "description": "Verify canonical links and duplication"},
         {"command": "schema", "description": "Generate and inject schema markup"},
-        {"command": "gsc", "description": "Check Google Search Console index status"}
+        {"command": "gsc", "description": "Check Google Search Console index status"},
+        {"command": "clear", "description": "Wipe session history and start fresh"}
     ]
     try:
         print("[*] Registering native bot commands on Telegram...")
