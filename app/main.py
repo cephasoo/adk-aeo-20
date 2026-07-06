@@ -163,26 +163,47 @@ except Exception as e:
     print(f"[*] Firestore initialization skipped or failed: {e}. Session persistence will run in-memory only.")
 
 def restore_telegram_session(chat_id: int, app_name: str, session_id: str):
-    """Restores the conversation session from Firestore if it exists."""
+    """Restores the conversation session events from the Firestore events subcollection."""
     if db is None:
         return
     try:
         user_id = str(chat_id)
         doc_ref = db.collection("telegram_sessions").document(user_id)
-        doc = doc_ref.get()
-        if doc.exists:
-            data = doc.to_dict()
-            sess_json = data.get("session_json")
-            if sess_json:
-                from google.adk.sessions import Session
-                sess = Session.model_validate_json(sess_json)
-                # Inject the session directly into the runner's session service storage
-                if app_name not in runner.session_service.sessions:
-                    runner.session_service.sessions[app_name] = {}
-                if user_id not in runner.session_service.sessions[app_name]:
-                    runner.session_service.sessions[app_name][user_id] = {}
-                runner.session_service.sessions[app_name][user_id][session_id] = sess
-                print(f"[*] Restored long-term session context for chat ID {chat_id} from Firestore.")
+        session_doc = doc_ref.get()
+
+        from google.adk.sessions import Session
+        from google.adk.events import Event
+
+        sess = Session(id=session_id, appName=app_name, userId=user_id, events=[])
+
+        if session_doc.exists:
+            # Query the subcollection for events sorted by timestamp ascending
+            events_ref = doc_ref.collection("events")
+            query = events_ref.order_by("timestamp", direction=firestore.Query.ASCENDING)
+            docs = query.stream()
+
+            events_list = []
+            event_fields = set(Event.model_fields.keys())
+
+            for doc in docs:
+                data = doc.to_dict()
+                # Clean up extraneous database columns to align strictly with the ADK Event schema
+                clean_data = {k: v for k, v in data.items() if k in event_fields}
+                events_list.append(Event(**clean_data))
+
+            sess.events = events_list
+            print(f"[*] Restored long-term session context with {len(sess.events)} events for chat ID {chat_id} from Firestore events subcollection.")
+        else:
+            # Create the parent document
+            doc_ref.set({"updated_at": firestore.SERVER_TIMESTAMP})
+            print(f"[*] Created new parent session document for chat ID {chat_id} in Firestore.")
+
+        # Inject the session directly into the runner's session service storage
+        if app_name not in runner.session_service.sessions:
+            runner.session_service.sessions[app_name] = {}
+        if user_id not in runner.session_service.sessions[app_name]:
+            runner.session_service.sessions[app_name][user_id] = {}
+        runner.session_service.sessions[app_name][user_id][session_id] = sess
     except Exception as e:
         print(f"[!] Warning: Failed to restore session from Firestore: {e}")
 
@@ -273,7 +294,7 @@ def prune_session_history_with_summary(sess, max_turns: int = 7):
     return sess
 
 def save_telegram_session(chat_id: int, app_name: str, session_id: str):
-    """Saves the conversation session back to Firestore."""
+    """Saves the conversation session events individually into the Firestore subcollection."""
     if db is None:
         return
     try:
@@ -282,12 +303,34 @@ def save_telegram_session(chat_id: int, app_name: str, session_id: str):
             if user_id in runner.session_service.sessions[app_name]:
                 sess = runner.session_service.sessions[app_name][user_id].get(session_id)
                 if sess:
-                    # Prune history using recursive summarization (keep last 7 turns raw)
-                    sess = prune_session_history_with_summary(sess, max_turns=7)
-                    sess_json = sess.model_dump_json()
                     doc_ref = db.collection("telegram_sessions").document(user_id)
-                    doc_ref.set({"session_json": sess_json, "updated_at": firestore.SERVER_TIMESTAMP})
-                    print(f"[*] Successfully persisted updated session context for chat ID {chat_id} to Firestore.")
+                    events_ref = doc_ref.collection("events")
+
+                    # 1. Fetch existing event IDs from Firestore to identify pruned ones
+                    existing_docs = [d.id for d in events_ref.stream()]
+
+                    # 2. Prune history using recursive summarization (keep last 7 turns raw)
+                    sess = prune_session_history_with_summary(sess, max_turns=7)
+
+                    # 3. Save active events to subcollection with last_updated TTL (30 days)
+                    import datetime
+                    expire_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)
+                    active_ids = set()
+
+                    for event in sess.events:
+                        active_ids.add(event.id)
+                        event_dict = event.model_dump()
+                        event_dict["last_updated"] = expire_time
+                        events_ref.document(event.id).set(event_dict)
+
+                    # 4. Clean up pruned/removed events from Firestore subcollection
+                    for doc_id in existing_docs:
+                        if doc_id not in active_ids:
+                            events_ref.document(doc_id).delete()
+
+                    # 5. Overwrite/update parent document (effectively clears old session_json field if present)
+                    doc_ref.set({"updated_at": firestore.SERVER_TIMESTAMP})
+                    print(f"[*] Successfully persisted updated event-based session context for chat ID {chat_id} to Firestore.")
     except Exception as e:
         print(f"[!] Warning: Failed to persist session to Firestore: {e}")
 
@@ -305,8 +348,14 @@ def handle_incoming_message(chat_id: int, text: str):
         # 2. Delete from Firestore database
         if db is not None:
             try:
-                db.collection("telegram_sessions").document(user_id).delete()
-                print(f"[*] Successfully evicted and deleted session context for chat ID {chat_id} from Firestore.")
+                doc_ref = db.collection("telegram_sessions").document(user_id)
+                # Delete all child event documents in the subcollection first
+                events_ref = doc_ref.collection("events")
+                for doc in events_ref.stream():
+                    doc.reference.delete()
+                # Delete the parent document
+                doc_ref.delete()
+                print(f"[*] Successfully evicted and deleted session context (including events subcollection) for chat ID {chat_id} from Firestore.")
             except Exception as e:
                 print(f"[!] Warning: Failed to delete session from Firestore: {e}")
         send_telegram_message(chat_id, "🧹 **Conversation history and session state cleared successfully!**")
