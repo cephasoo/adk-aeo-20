@@ -295,6 +295,23 @@ def handle_incoming_message(chat_id: int, text: str):
     """Feeds incoming Telegram commands to the ADK agent and returns responses."""
     text_clean = text.strip()
 
+    # Clear/Reset session command
+    if text_clean.startswith("/clear") or text_clean.startswith("/reset"):
+        user_id = str(chat_id)
+        app_name = "app"
+        # 1. Remove from in-memory runner sessions
+        if app_name in runner.session_service.sessions:
+            runner.session_service.sessions[app_name].pop(user_id, None)
+        # 2. Delete from Firestore database
+        if db is not None:
+            try:
+                db.collection("telegram_sessions").document(user_id).delete()
+                print(f"[*] Successfully evicted and deleted session context for chat ID {chat_id} from Firestore.")
+            except Exception as e:
+                print(f"[!] Warning: Failed to delete session from Firestore: {e}")
+        send_telegram_message(chat_id, "🧹 **Conversation history and session state cleared successfully!**")
+        return
+
     # Simple direct greeting check
     if text_clean.startswith("/start"):
         welcome_text = (
