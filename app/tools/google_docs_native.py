@@ -12,10 +12,26 @@ SCOPES = [
 
 def get_google_services():
     """Authenticates and returns the docs and drive API client services."""
+    # Define unified paths
+    global_token_path = r"C:\Users\USER\.gemini\gdrive-token.json"
+    local_token_path = "token.json"
+    
+    token_path = global_token_path if os.path.exists(global_token_path) else (local_token_path if os.path.exists(local_token_path) else global_token_path)
+    
+    global_secrets_path = r"C:\Users\USER\.gemini\client_secrets.json"
+    local_secrets_path_1 = "client_secrets.json"
+    local_secrets_path_2 = "credentials.json"
+    
+    secrets_path = None
+    for p in [global_secrets_path, local_secrets_path_1, local_secrets_path_2]:
+        if os.path.exists(p):
+            secrets_path = p
+            break
+            
     creds = None
-    if os.path.exists('token.json'):
+    if os.path.exists(token_path):
         try:
-            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
         except Exception:
             pass
             
@@ -26,16 +42,19 @@ def get_google_services():
             except Exception:
                 creds = None
         if not creds:
-            if not os.path.exists('credentials.json'):
-                raise FileNotFoundError("Google OAuth 'credentials.json' is missing in project root.")
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            if not secrets_path:
+                raise FileNotFoundError("Google OAuth client secrets file ('client_secrets.json') is missing.")
+            flow = InstalledAppFlow.from_client_secrets_file(secrets_path, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
+        # Save to the resolved token path (creates directory if needed)
+        os.makedirs(os.path.dirname(token_path), exist_ok=True)
+        with open(token_path, 'w') as token:
             token.write(creds.to_json())
             
     docs_service = build('docs', 'v1', credentials=creds)
     drive_service = build('drive', 'v3', credentials=creds)
     return docs_service, drive_service
+
 
 def resolve_document_id(identifier: str) -> str:
     """Resolves document ID from either a direct ID or a Document Title search."""
