@@ -9,9 +9,19 @@ description: Reads, creates, and formats documents in Google Docs, providing doc
 
 > [!IMPORTANT]
 > **CRITICAL ARCHITECTURAL REQUIREMENT:** Do NOT use the Google Docs API (`docs.googleapis.com`) or call `build('docs', 'v1', ...)` directly. The GCP project only has the **Google Drive API** enabled.
-> All document operations (create, read, append, update) must be executed using the helper library **`app.tools.google_docs_native`** which performs all actions completely via the Google Drive API.
-> Import and call the native functions:
-> * `from app.tools.google_docs_native import create_google_doc, read_google_doc, update_google_doc, append_to_google_doc`
+> 
+> You can perform all document operations (create, read, append, update) through two methods:
+> 
+> ### Method A: Direct MCP Tools (Preferred Globally)
+> If you have the `google-docs-mcp` server connected in your environment, invoke these MCP tools directly:
+> *   `create_doc(title)` — Creates a new Google Doc and returns the ID and URL.
+> *   `read_doc(document_id_or_title)` — Reads the plain text body of the Google Doc.
+> *   `append_doc(document_id_or_title, text)` — Appends markdown content to the Google Doc.
+> *   `update_doc(document_id_or_title, new_content)` — Replaces the entire Google Doc body with formatted markdown/mermaid diagrams.
+> 
+> ### Method B: Python Library (Local Workspace Fallback)
+> If you are running code locally in the `gutenberg-aeo-copilot` workspace, import the native helper library:
+> `from app.tools.google_docs_native import create_google_doc, read_google_doc, update_google_doc, append_to_google_doc`
 
 ## Description
 Reads, creates, and formats documents in Google Docs, providing document sharing links and appending or replacing text blocks.
