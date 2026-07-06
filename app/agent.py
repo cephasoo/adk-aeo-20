@@ -19,7 +19,8 @@ from app.tools.seo_tools import (
     gsc_page_query_analysis,
     canonical_audit,
     redirect_chain_detector,
-    require_oauth_claims
+    require_oauth_claims,
+    audit_hidden_faq_schema
 )
 
 # Load local environment variables from .env if present
@@ -531,7 +532,8 @@ aeo_copilot_agent = LlmAgent(
         redirect_chain_detector,
         audit_brand_aeo_visibility,
         inject_aeo_schema_metafield,
-        publish_gutenberg_page
+        publish_gutenberg_page,
+        audit_hidden_faq_schema
     ]
 )
 

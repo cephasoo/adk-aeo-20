@@ -993,3 +993,29 @@ def redirect_chain_detector(url: str) -> str:
         return "\n".join(report)
     except Exception as e:
         return f"Error detecting redirect chain: {e}"
+
+# =====================================================================
+# 10. HIDDEN SCHEMA COMPLIANCE AUDITOR
+# =====================================================================
+
+def audit_hidden_faq_schema(url: str, threshold: float = 0.80) -> str:
+    """
+    Parses a webpage's HTML to detect if it serves structured JSON-LD FAQPage schemas 
+    whose questions and answers are missing or modified in the visible body layout, 
+    risking search engine manual spam actions.
+    
+    Args:
+        url: The absolute URL of the web page to audit.
+        threshold: Fuzzy matching word-similarity threshold. Defaults to 0.80.
+        
+    Returns:
+        A JSON string containing the audit summary and any detected mismatch violations.
+    """
+    import json
+    from .audit_hidden_schema import audit_url
+    try:
+        res = audit_url(url, threshold)
+        return json.dumps(res, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e), "status": "FAIL"})
+
