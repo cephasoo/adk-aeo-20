@@ -431,7 +431,8 @@ def handle_incoming_message(chat_id: int, text: str):
         # Restore session context from Firestore if available
         restore_telegram_session(chat_id, app_name, session_id)
 
-        print(f"[*] Dispatching prompt to ADK Agent: '{text_clean}'")
+        log_text = text_clean if len(text_clean) <= 100 else f"{text_clean[:97]}..."
+        print(f"[*] Dispatching prompt to ADK Agent: '{log_text}'")
 
         # Format user input for ADK GenAI types
         from google.genai import types
