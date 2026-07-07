@@ -28,14 +28,17 @@ def read_doc(document_id_or_title: str) -> str:
     return read_google_doc(document_id_or_title)
 
 @mcp.tool()
-def create_doc(title: str) -> str:
+def create_doc(title: str, allow_duplicates: bool = False) -> str:
     """
     Creates a new Google Document and returns its URL.
+    By default, if a document with the same title already exists, it will reuse
+    the existing document to prevent cluttering the drive with duplicate files.
     
     Args:
         title: The title of the new document.
+        allow_duplicates: Set to True to force creation of a duplicate document.
     """
-    return create_google_doc(title)
+    return create_google_doc(title, allow_duplicates=allow_duplicates)
 
 @mcp.tool()
 def append_doc(document_id_or_title: str, text: str) -> str:

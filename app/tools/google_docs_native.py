@@ -177,15 +177,38 @@ def read_google_doc(document_id_or_title: str) -> str:
     except Exception as e:
         return f"Error reading document: {str(e)}"
 
-def create_google_doc(title: str) -> str:
+def create_google_doc(title: str, allow_duplicates: bool = False) -> str:
     """
-    Creates a new Google Document and returns its URL.
+    Creates a new Google Document and returns its URL. If a document with the
+    same title already exists and allow_duplicates is False, reuses and returns
+    the existing document's ID and URL instead of creating a duplicate.
     
     Args:
         title: The title of the new document.
+        allow_duplicates: If True, bypasses checks and creates a new copy regardless.
     """
     try:
         _, drive_service = get_google_services()
+        
+        # Check for existing document if duplicates are not allowed
+        if not allow_duplicates:
+            try:
+                query = f"name = '{title}' and mimeType = 'application/vnd.google-apps.document' and trashed = false"
+                results = drive_service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+                files = results.get('files', [])
+                if files:
+                    existing_id = files[0]['id']
+                    url = f"https://docs.google.com/document/d/{existing_id}/edit"
+                    return json.dumps({
+                        "status": "SUCCESS",
+                        "document_id": existing_id,
+                        "url": url,
+                        "created": False,
+                        "message": f"Document '{title}' already exists. Reusing existing document."
+                    }, indent=2)
+            except Exception:
+                pass
+
         file_metadata = {
             'name': title,
             'mimeType': 'application/vnd.google-apps.document'
@@ -193,7 +216,12 @@ def create_google_doc(title: str) -> str:
         doc = drive_service.files().create(body=file_metadata, fields='id').execute()
         doc_id = doc.get('id')
         url = f"https://docs.google.com/document/d/{doc_id}/edit"
-        return json.dumps({"status": "SUCCESS", "document_id": doc_id, "url": url}, indent=2)
+        return json.dumps({
+            "status": "SUCCESS",
+            "document_id": doc_id,
+            "url": url,
+            "created": True
+        }, indent=2)
     except Exception as e:
         return json.dumps({"status": "FAIL", "error": str(e)})
 

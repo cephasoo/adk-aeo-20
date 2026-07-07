@@ -59,6 +59,12 @@ def test_create_google_doc_mock(monkeypatch):
             return {"id": "created-doc-id-999"}
 
     class MockFiles:
+        def list(self, q, spaces, fields):
+            class MockListRequest:
+                def execute(self):
+                    return {"files": []}
+            return MockListRequest()
+            
         def create(self, body, fields):
             assert body["name"] == "New Document Title"
             assert body["mimeType"] == "application/vnd.google-apps.document"
@@ -74,6 +80,57 @@ def test_create_google_doc_mock(monkeypatch):
     assert res["status"] == "SUCCESS"
     assert res["document_id"] == "created-doc-id-999"
     assert "created-doc-id-999" in res["url"]
+    assert res["created"] is True
+
+def test_create_google_doc_prevent_duplicates_mock(monkeypatch):
+    class MockFiles:
+        def list(self, q, spaces, fields):
+            assert "name = 'Existing Title'" in q
+            class MockListRequest:
+                def execute(self):
+                    return {"files": [{"id": "existing-doc-id-123", "name": "Existing Title"}]}
+            return MockListRequest()
+
+    class MockDriveService:
+        def files(self):
+            return MockFiles()
+
+    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (None, MockDriveService()))
+    
+    res = json.loads(create_google_doc("Existing Title", allow_duplicates=False))
+    assert res["status"] == "SUCCESS"
+    assert res["document_id"] == "existing-doc-id-123"
+    assert "existing-doc-id-123" in res["url"]
+    assert res["created"] is False
+    assert "already exists" in res["message"]
+
+def test_create_google_doc_allow_duplicates_mock(monkeypatch):
+    class MockCreateRequest:
+        def execute(self):
+            return {"id": "new-doc-id-456"}
+
+    class MockFiles:
+        def list(self, q, spaces, fields):
+            class MockListRequest:
+                def execute(self):
+                    return {"files": [{"id": "existing-doc-id-123", "name": "Existing Title"}]}
+            return MockListRequest()
+            
+        def create(self, body, fields):
+            assert body["name"] == "Existing Title"
+            return MockCreateRequest()
+
+    class MockDriveService:
+        def files(self):
+            return MockFiles()
+
+    monkeypatch.setattr("app.tools.google_docs_native.get_google_services", lambda: (None, MockDriveService()))
+    
+    res = json.loads(create_google_doc("Existing Title", allow_duplicates=True))
+    assert res["status"] == "SUCCESS"
+    assert res["document_id"] == "new-doc-id-456"
+    assert "new-doc-id-456" in res["url"]
+    assert res["created"] is True
 
 def test_append_google_doc_mock(monkeypatch):
     class MockExportRequest:
