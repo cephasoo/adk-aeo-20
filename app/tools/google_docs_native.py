@@ -69,7 +69,8 @@ def resolve_document_id(identifier: str) -> str:
         
     try:
         _, drive_service = get_google_services()
-        query = f"name = '{identifier}' and mimeType = 'application/vnd.google-apps.document' and trashed = false"
+        escaped_id = identifier.replace("'", "\\'")
+        query = f"name = '{escaped_id}' and mimeType = 'application/vnd.google-apps.document' and trashed = false"
         results = drive_service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
         files = results.get('files', [])
         if files:
@@ -193,7 +194,8 @@ def create_google_doc(title: str, allow_duplicates: bool = False) -> str:
         # Check for existing document if duplicates are not allowed
         if not allow_duplicates:
             try:
-                query = f"name = '{title}' and mimeType = 'application/vnd.google-apps.document' and trashed = false"
+                escaped_title = title.replace("'", "\\'")
+                query = f"name = '{escaped_title}' and mimeType = 'application/vnd.google-apps.document' and trashed = false"
                 results = drive_service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
                 files = results.get('files', [])
                 if files:
