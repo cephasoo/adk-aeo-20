@@ -19,6 +19,7 @@ BROWSER_HEADERS = {
 
 # Load audit rules module from the skill path
 from .audit_rules import run_audit, generate_report_html
+from app.tools.wp_client import get_wp_credentials, base_site_url
 
 # Stdio / McpToolset imports
 try:
@@ -104,8 +105,9 @@ def require_oauth_claims(required_scope: str):
             if not token:
                 return "Error: 🔒 Authentication required. Please authenticate first by running: /login <your_token_or_secret>"
 
-            # Decode and validate JWT
-            dev_key = os.environ.get("DEVELOPER_SECRET_KEY", "dev_secret_placeholder")
+            dev_key = os.environ.get("DEVELOPER_SECRET_KEY")
+            if not dev_key:
+                return "Error: 🔒 Server misconfiguration: DEVELOPER_SECRET_KEY is not set."
             try:
                 claims = jwt.decode(token, dev_key, algorithms=["HS256"])
             except jwt.ExpiredSignatureError:
@@ -172,15 +174,8 @@ def advanced_seo_audit(wp_post_id_or_url: str, intent: str = "") -> str:
     Saves the full detailed report as a static HTML file in the WordPress uploads directory
     and returns a high-impact summary to Telegram.
     """
-    wp_url = os.environ.get("WP_API_URL")
-    wp_user = os.environ.get("WP_USERNAME")
-    wp_pass = os.environ.get("WP_APPLICATION_PASSWORD")
-
-    if wp_pass:
-        wp_pass = wp_pass.replace(" ", "")
-
+    wp_url, wp_user, wp_pass, is_mock = get_wp_credentials()
     input_str = str(wp_post_id_or_url).strip()
-    is_mock = not wp_url or not wp_user or not wp_pass
 
     resolved_url = ""
     resolved_id = "MOCK_123"
@@ -902,8 +897,14 @@ def canonical_audit(urls: str) -> str:
 
     report = ["### Batch Canonical & Cannibalization Audit"]
     canonical_mappings = {}
+    is_mock = is_local_dev_bypass("")
 
     for url in url_list:
+        if is_mock:
+            report.append(f"- `{url}`: ✅ Self-referencing")
+            canonical_mappings.setdefault(url, []).append(url)
+            continue
+
         try:
             resp = requests.get(url, headers=BROWSER_HEADERS, timeout=10, verify=_get_verify_param(url))
             if resp.status_code != 200:
@@ -946,6 +947,11 @@ def redirect_chain_detector(url: str) -> str:
     """
     Follows a URL's response history to detect redirect chains, loops, and status codes.
     """
+    if is_local_dev_bypass(""):
+        report = [f"### Redirect Chain Audit for: `{url}`"]
+        report.append(f"`Hop 1`: `[200]` `{url}`")
+        return "\n".join(report)
+
     try:
         report = [f"### Redirect Chain Audit for: `{url}`"]
         current_url = url

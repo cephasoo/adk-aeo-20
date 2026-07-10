@@ -39,7 +39,8 @@ def check_semantic_alignment(h1: str, headings: list) -> tuple[float, str]:
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
-        model_name = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+        from app.config import DEFAULT_GEMINI_MODEL
+        model_name = DEFAULT_GEMINI_MODEL
 
         subheadings_list = [txt for lvl, txt in headings if lvl > 1]
         if not h1_keywords or not subheadings_list:
@@ -95,7 +96,8 @@ def check_image_alt_coherence(h1: str, images: list) -> tuple[list, str]:
     try:
         from google import genai
         client = genai.Client(api_key=api_key)
-        model_name = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+        from app.config import DEFAULT_GEMINI_MODEL
+        model_name = DEFAULT_GEMINI_MODEL
 
         image_data = [f"Image src: '{img.get('src')}', Alt: '{img.get('alt')}'" for img in images_with_alts]
         prompt = f"""

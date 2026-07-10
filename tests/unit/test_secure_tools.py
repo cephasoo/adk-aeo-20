@@ -1,25 +1,8 @@
 import pytest
 from app.agent import (
-    fetch_and_parse_gutenberg_post,
     audit_brand_aeo_visibility,
     inject_aeo_schema_metafield
 )
-
-def test_fetch_and_parse_gutenberg_post_warnings(monkeypatch):
-    # Temporarily clear env variables to force WordPress Mock Mode
-    monkeypatch.delenv("WP_API_URL", raising=False)
-    monkeypatch.delenv("WP_USERNAME", raising=False)
-    monkeypatch.delenv("WP_APPLICATION_PASSWORD", raising=False)
-
-    # Execute Gutenberg parser in Mock Mode
-    report = fetch_and_parse_gutenberg_post(wp_post_id=123)
-
-    # Assertions
-    assert "Gutenberg Audit Report for Post #123" in report
-    assert "Headings Found**: 2" in report
-    assert "Images Found**: 1" in report
-    assert "Heading Skip Warning" in report
-    assert "Missing Alt Text Warning" in report
 
 def test_audit_brand_aeo_visibility_calculation(monkeypatch):
     # Temporarily clear env variables to force SerpAPI Mock Mode

@@ -101,10 +101,33 @@ def test_gsc_tools_mock(monkeypatch):
     query_res = gsc_page_query_analysis("http://example.com")
     assert "GSC Page Query Analysis" in query_res
 
-def test_diagnostic_tools_mock():
-    # Test redirect chain with a direct non-redirect url
-    chain_res = redirect_chain_detector("https://httpbin.org/status/200")
-    assert "Hop 1" in chain_res
+def test_diagnostic_tools_mock(monkeypatch):
+    class MockResponse:
+        def __init__(self, text, status_code, headers=None):
+            self.text = text
+            self.status_code = status_code
+            self.headers = headers or {}
+
+    def mock_get(url, *args, **kwargs):
+        if "redirect" in url:
+            return MockResponse("", 301, {"Location": "https://example.com/target"})
+        return MockResponse("<html><head><link rel='canonical' href='https://example.com/'></head></html>", 200)
+
+    monkeypatch.setattr("requests.get", mock_get)
+
+    # Temporarily set dummy credentials to trigger live network path (to test our mocks)
+    monkeypatch.setenv("WP_API_URL", "https://example.com/wp-json")
+    monkeypatch.setenv("WP_USERNAME", "admin")
+    monkeypatch.setenv("WP_APPLICATION_PASSWORD", "secret")
+
+    # Test redirect chain
+    chain_res = redirect_chain_detector("https://example.com/redirect")
+    assert "Hop 1" in chain_res or "Hop 2" in chain_res
+
+    # Test canonical audit
+    canon_res = canonical_audit("https://example.com/")
+    assert "Batch Canonical" in canon_res
+
 
 def test_oauth_claims_gate(monkeypatch):
     import jwt

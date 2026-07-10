@@ -62,7 +62,7 @@ graph TD
   * **Exclusion Audits**: If a brand is not ranking, the agent inspects the top 3 ranking competitors, diagnoses if exclusion is due to an **Intent Mismatch**, and generates a **Content Scaling Roadmap** suggesting guide titles and PAA question integrations.
 
 ### 4. Advanced Technical SEO & Google Search Console Integration
-* **Redirect loops & Loops Detector**: Recursively follows redirects (`redirect_chain_detector`) to trace loops, hops, and canonical targets.
+* **Redirect Chains & Loops Detector**: Recursively follows redirects (`redirect_chain_detector`) to trace loops, hops, and canonical targets.
 * **Canonical cannibalization auditor**: Analyzes list of URLs (`canonical_audit`) to verify canonical tag health and prevent ranking self-cannibalization.
 * **GSC Inspector**: Interfaces with Google Search Console APIs to audit indexing status (`gsc_indexing_inspector`), retrieve performance reports (`gsc_performance_report`), and query organic search impressions by page (`gsc_page_query_analysis`).
 

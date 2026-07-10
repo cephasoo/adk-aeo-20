@@ -29,13 +29,23 @@ def markdown_to_html(text: str) -> str:
     import re
     import html
 
+    # 0. Protect and parse fenced code blocks first
+    code_blocks = []
+    def save_code_block(match):
+        code_content = match.group(2)
+        escaped_code = html.escape(code_content)
+        code_blocks.append(escaped_code)
+        return f"___CODE_BLOCK_PLACEHOLDER_{len(code_blocks)-1}___"
+
+    t = re.sub(r'```([a-zA-Z0-9_-]*)\n?(.*?)\n?```', save_code_block, text, flags=re.DOTALL)
+
     # 1. Protect markdown links [text](url) by extracting them
     links = []
     def save_link(match):
         links.append(match.groups())
         return f"___LINK_PLACEHOLDER_{len(links)-1}___"
 
-    t = re.sub(r'\[(.*?)\]\((.*?)\)', save_link, text)
+    t = re.sub(r'\[(.*?)\]\((.*?)\)', save_link, t)
 
     # 2. Escape HTML special characters for the rest of the text
     t = html.escape(t)
@@ -43,7 +53,6 @@ def markdown_to_html(text: str) -> str:
     # 3. Restore links as HTML <a> tags
     for idx, (link_text, url) in enumerate(links):
         escaped_link_text = html.escape(link_text)
-        # Escape quotes in URL to prevent attribute injection
         safe_url = url.replace('"', '&quot;')
         t = t.replace(f"___LINK_PLACEHOLDER_{idx}___", f'<a href="{safe_url}">{escaped_link_text}</a>')
 
@@ -78,6 +87,10 @@ def markdown_to_html(text: str) -> str:
         lines.append(line)
     t = '\n'.join(lines)
 
+    # 10. Restore code blocks inside <pre><code>
+    for idx, code_content in enumerate(code_blocks):
+        t = t.replace(f"___CODE_BLOCK_PLACEHOLDER_{idx}___", f"<pre><code>{code_content}</code></pre>")
+
     return t
 
 def send_telegram_message(chat_id: int, text: str):
@@ -104,7 +117,7 @@ def send_telegram_message(chat_id: int, text: str):
 
         # Estimate line length (add 1 for the newline character)
         line_len = len(line) + 1
-        if current_length + line_len > 3800:
+        if current_length + line_len > 3400:
             # Close code block if open in this chunk
             if in_code_block:
                 current_chunk.append("```")

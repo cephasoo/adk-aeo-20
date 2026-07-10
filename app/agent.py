@@ -22,12 +22,15 @@ from app.tools.seo_tools import (
     require_oauth_claims,
     audit_hidden_faq_schema
 )
+from app.tools.wp_client import get_wp_credentials, base_site_url
 
 from app.tools.google_docs_native import (
-    read_google_doc,
-    create_google_doc,
-    append_to_google_doc,
-    update_google_doc
+    read_google_doc as read_doc,
+    create_google_doc as create_doc,
+    append_to_google_doc as append_doc,
+    update_google_doc as update_doc,
+    update_google_doc_from_file as update_doc_from_file,
+    append_to_google_doc_from_file as append_doc_from_file
 )
 
 
@@ -40,9 +43,9 @@ os.environ["GOOGLE_CLOUD_PROJECT"] = gcp_project
 os.environ["GOOGLE_CLOUD_QUOTA_PROJECT"] = os.environ.get("GOOGLE_CLOUD_QUOTA_PROJECT", gcp_project)
 
 # Load model client securely (allow model overriding via GEMINI_MODEL)
+from app.config import DEFAULT_GEMINI_MODEL
 api_key = os.environ.get("GEMINI_API_KEY")
-model_name = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
-model = Gemini(model=model_name, api_key=api_key)
+model = Gemini(model=DEFAULT_GEMINI_MODEL, api_key=api_key)
 
 # Robust automatic retry patch for Google GenAI 503 ServerErrors and 429 Rate Limits
 try:
@@ -120,184 +123,7 @@ try:
 except Exception as e:
     print(f"[*] Warning: Failed to apply retry patch to model: {e}")
 
-def fetch_and_parse_gutenberg_post(wp_post_id: str) -> str:
-    """
-    Connects to WordPress REST API, retrieves a Gutenberg post (by ID or URL slug),
-    and audits it for semantic heading hierarchies and image alt tags.
-    """
-    wp_url = os.environ.get("WP_API_URL")
-    wp_user = os.environ.get("WP_USERNAME")
-    wp_pass = os.environ.get("WP_APPLICATION_PASSWORD")
 
-    # Clean application password (remove spaces) if present
-    if wp_pass:
-        wp_pass = wp_pass.replace(" ", "")
-
-    # MOCK MODE: Use simulated content if credentials are not configured yet
-    if not wp_url or not wp_user or not wp_pass:
-        print("[*] WordPress credentials missing. Running fetch_and_parse_gutenberg_post in mock mode.")
-        # Simulated raw Gutenberg post HTML content
-        content_html = """
-        <!-- wp:heading {"level":1} -->
-        <h1>Ultimate Guide to Shopify SEO</h1>
-        <!-- /wp:heading -->
-        <!-- wp:paragraph -->
-        <p>This is a paragraph outlining our Shopify SEO agency strategies.</p>
-        <!-- /wp:paragraph -->
-        <!-- wp:image {"id":456,"sizeSlug":"full","linkDestination":"none"} -->
-        <figure class="wp-block-image size-full"><img src="http://example.com/logo.png" alt="" class="wp-image-456"/></figure>
-        <!-- /wp:image -->
-        <!-- wp:heading {"level":4} -->
-        <h4>Advanced Technical Shopify Checklists</h4>
-        <!-- /wp:heading -->
-        """
-        resolved_id = "MOCK_123"
-    else:
-        # Determine if input is a URL or a direct ID
-        input_str = str(wp_post_id).strip()
-
-        # Check if it's a simple integer ID
-        if input_str.isdigit():
-            resolved_id = int(input_str)
-        else:
-            # It's a URL. Try to parse the ID from query params (e.g. ?p=123 or ?page_id=123)
-            query_id_match = re.search(r"[?&](p|page_id)=(\d+)", input_str)
-            if query_id_match:
-                resolved_id = int(query_id_match.group(2))
-            else:
-                # Resolve by slug (extract last non-empty path component)
-                path_parts = [p for p in input_str.split("/") if p]
-                if not path_parts:
-                    return f"Error: Invalid WordPress URL format: '{wp_post_id}'."
-
-                slug = path_parts[-1]
-                # If there are query parameters in the last component, strip them
-                if "?" in slug:
-                    slug = slug.split("?")[0]
-
-                print(f"[*] Attempting to resolve post by slug: '{slug}'")
-                try:
-                    # Query posts by slug
-                    response = requests.get(
-                        f"{wp_url}/posts",
-                        params={"slug": slug},
-                        auth=(wp_user, wp_pass),
-                        timeout=10
-                    )
-                    posts = response.json() if response.status_code == 200 else []
-
-                    if not posts:
-                        # Fallback: Query pages by slug
-                        response = requests.get(
-                            f"{wp_url}/pages",
-                            params={"slug": slug},
-                            auth=(wp_user, wp_pass),
-                            timeout=10
-                        )
-                        posts = response.json() if response.status_code == 200 else []
-
-                    if not posts:
-                        return f"Error: Could not find any post or page with slug '{slug}' on your WordPress site."
-
-                    resolved_id = posts[0].get("id")
-                    print(f"[*] Resolved slug '{slug}' to Post/Page ID: {resolved_id}")
-                except Exception as e:
-                    return f"Error: Failed to resolve URL slug '{slug}' from WordPress: {e}"
-
-        # Fetch the resolved post/page
-        try:
-            # Try to fetch as a post first
-            response = requests.get(
-                f"{wp_url}/posts/{resolved_id}",
-                auth=(wp_user, wp_pass),
-                timeout=10
-            )
-
-            # If 404/not found, try pages endpoint
-            if response.status_code == 404:
-                response = requests.get(
-                    f"{wp_url}/pages/{resolved_id}",
-                    auth=(wp_user, wp_pass),
-                    timeout=10
-                )
-
-            if response.status_code != 200:
-                return f"Error: Failed to fetch post/page #{resolved_id} from WordPress REST API (Status code: {response.status_code})."
-
-            post_data = response.json()
-            content_html = post_data.get("content", {}).get("raw", post_data.get("content", {}).get("rendered", ""))
-        except Exception as e:
-            return f"Error: Failed to connect to local WordPress staging site: {e}"
-
-    # --- HTML / Block Parser Engine ---
-    warnings = []
-    headers = []
-    images = []
-
-    # 1. Word Count Check (Lean Content)
-    # Strip HTML tags and split to get clean words list
-    text_content = re.sub(r'<[^>]+>', ' ', content_html)
-    words = [w for w in text_content.split() if w]
-    word_count = len(words)
-    if word_count < 300:
-        warnings.append(
-            f"Thin Content Warning: Post only contains {word_count} words. Search engines and AEO systems penalize lean content under 300 words."
-        )
-
-    # 2. Parse Headings (looks for h1-h6 tags or Gutenberg heading blocks)
-    heading_matches = re.findall(r'<h([1-6])[^>]*>(.*?)</h\1>', content_html, re.IGNORECASE)
-    for level, text in heading_matches:
-        headers.append((int(level), text.strip()))
-
-    # Validate H1 tag count
-    h1_count = sum(1 for lvl, txt in headers if lvl == 1)
-    if h1_count > 1:
-        warnings.append(
-            f"Duplicate H1 Warning: Found {h1_count} H1 tags. A page must have exactly one H1 tag to establish proper semantic context."
-        )
-    elif h1_count == 0:
-        warnings.append(
-            f"Missing H1 Warning: No H1 tags found. A page must have exactly one H1 tag for search engines to identify the primary topic."
-        )
-
-    # Verify heading hierarchies (e.g., no jumping from h1 to h4 directly)
-    for i in range(len(headers) - 1):
-        curr_lvl, curr_txt = headers[i]
-        next_lvl, next_txt = headers[i+1]
-        if next_lvl > curr_lvl + 1:
-            warnings.append(
-                f"Heading Skip Warning: Skipped hierarchy levels between '{curr_txt}' (H{curr_lvl}) and '{next_txt}' (H{next_lvl})."
-            )
-
-    # 3. Parse Images (looks for img tags and examines alt tags)
-    img_matches = re.findall(r'<img\s+([^>]*?)>', content_html, re.IGNORECASE)
-    for attrs in img_matches:
-        alt_match = re.search(r'alt=["\'](.*?)["\']', attrs, re.IGNORECASE)
-        src_match = re.search(r'src=["\'](.*?)["\']', attrs, re.IGNORECASE)
-
-        src = src_match.group(1) if src_match else "unknown"
-        alt = alt_match.group(1).strip() if alt_match else ""
-
-        images.append((src, alt))
-        if not alt:
-            warnings.append(f"Missing Alt Text Warning: Image '{os.path.basename(src)}' has no descriptive alt attribute.")
-
-    # 4. Format the Audit Report
-    report = [
-        f"### Gutenberg Audit Report for Post #{wp_post_id}",
-        f"**Word Count**: {word_count} words",
-        f"**Headings Found**: {len(headers)}",
-        f"**Images Found**: {len(images)}"
-    ]
-
-    if warnings:
-        report.append("\n**⚠️ Technical SEO Warnings Found:**")
-        for warning in warnings:
-            report.append(f"- {warning}")
-    else:
-        report.append("\n**✅ Technical SEO Check: Passed (Heading hierarchies, word count, and image alt tags are clean).**")
-
-    return "\n".join(report)
 
 def audit_brand_aeo_visibility(brand_name: str, search_query: str, gl: str = "us", hl: str = "en") -> str:
     """
@@ -373,19 +199,11 @@ def inject_aeo_schema_metafield(wp_post_id: int, schema_type: str, schema_json: 
     """
     Pushes generated FAQ or local schema JSON-LD back into a WordPress post's custom meta fields.
     """
-    wp_url = os.environ.get("WP_API_URL")
-    wp_user = os.environ.get("WP_USERNAME")
-    wp_pass = os.environ.get("WP_APPLICATION_PASSWORD")
-
-    # Clean application password (remove spaces) if present
-    if wp_pass:
-        wp_pass = wp_pass.replace(" ", "")
-
+    wp_url, wp_user, wp_pass, is_mock = get_wp_credentials()
     resolved_id = int(wp_post_id)
 
     # MOCK MODE: Simulate success if credentials are not configured yet or during tests
-    is_testing = "PYTEST_CURRENT_TEST" in os.environ
-    if not wp_url or not wp_user or not wp_pass or is_testing:
+    if is_mock:
         print("[*] WordPress credentials missing or in test mode. Running inject_aeo_schema_metafield in mock mode.")
         return f"Success: (MOCKED) Injected {schema_type} JSON-LD Schema into WordPress Post #{resolved_id} metadata."
 
@@ -437,17 +255,10 @@ def publish_gutenberg_page(title: str, content_html: str, status: str = "draft",
     Returns:
         A success or error message containing the created post/page ID.
     """
-    wp_url = os.environ.get("WP_API_URL")
-    wp_user = os.environ.get("WP_USERNAME")
-    wp_pass = os.environ.get("WP_APPLICATION_PASSWORD")
-
-    # Clean application password (remove spaces) if present
-    if wp_pass:
-        wp_pass = wp_pass.replace(" ", "")
+    wp_url, wp_user, wp_pass, is_mock = get_wp_credentials()
 
     # MOCK MODE: Simulate success if credentials are not configured yet or during tests
-    is_testing = "PYTEST_CURRENT_TEST" in os.environ
-    if not wp_url or not wp_user or not wp_pass or is_testing:
+    if is_mock:
         print("[*] WordPress credentials missing or in test mode. Running publish_gutenberg_page in mock mode.")
         return f"Success: (MOCKED) Created draft page '{title}' successfully with Gutenberg content."
 
@@ -469,9 +280,7 @@ def publish_gutenberg_page(title: str, content_html: str, status: str = "draft",
             if not slug:
                 slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
 
-            # Resolve base URL from WP_API_URL
-            # e.g., http://aeo-copilot.local/wp-json/wp/v2 -> http://aeo-copilot.local
-            base_url = wp_url.split("/wp-json")[0]
+            base_url = base_site_url(wp_url)
             pretty_link = f"{base_url}/{slug}/"
             edit_link = f"{base_url}/wp-admin/post.php?post={post_id}&action=edit"
 
@@ -511,7 +320,8 @@ aeo_copilot_agent = LlmAgent(
         "  Query                      Clicks   Imps     CTR      Pos\n"
         "  ---------------------------------------------------------\n"
         "  alternative dest to dubai  420      12,100   3.47%    3.2\n"
-        "  ```\n\n"
+        "  ```\n"
+        "- Strict Audit Reporting: When presenting the results of 'advanced_seo_audit', you MUST report the errors, warnings, and metrics verbatim as returned by the tool. DO NOT add, remove, or modify any listed Critical Errors or Technical Warnings (such as claiming a canonical tag is missing when the tool lists it as passed/self-referential).\n\n"
         "When publishing or updating pages:\n"
         "- Choose between native and custom blocks using your Decision Matrix:\n"
         "  * Use native blocks (e.g. core/heading, core/paragraph, core/list, core/image) for standard text and layouts.\n"
@@ -542,10 +352,12 @@ aeo_copilot_agent = LlmAgent(
         inject_aeo_schema_metafield,
         publish_gutenberg_page,
         audit_hidden_faq_schema,
-        read_google_doc,
-        create_google_doc,
-        append_to_google_doc,
-        update_google_doc
+        read_doc,
+        create_doc,
+        append_doc,
+        update_doc,
+        update_doc_from_file,
+        append_doc_from_file
     ]
 )
 
