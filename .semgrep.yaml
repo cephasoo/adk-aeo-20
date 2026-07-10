@@ -1,0 +1,32 @@
+﻿rules:
+  - id: ban-eval-exec
+    pattern: |
+      exec(...)
+    message: "Using exec() is extremely dangerous, especially in a server-facing bot. Refactor to use structured functions."
+    languages: [python]
+    severity: ERROR
+
+  - id: ban-eval
+    pattern: |
+      eval(...)
+    message: "Using eval() allows arbitrary code execution. Refactor to use safe alternatives like json.loads() or ast.literal_eval()."
+    languages: [python]
+    severity: ERROR
+
+  - id: insecure-subprocess-shell
+    pattern: |
+      subprocess.check_call(..., shell=True, ...)
+    message: "Using shell=True with subprocess calls can lead to command injection. Avoid passing raw strings to shell=True."
+    languages: [python]
+    severity: WARNING
+
+  - id: hardcoded-gemini-key
+    patterns:
+      - pattern-either:
+          - pattern: |
+              "AIzaSy..."
+          - pattern: |
+              'AIzaSy...'
+    message: "Potential hardcoded Google Cloud/Gemini API key detected. Move this secret to environment variables."
+    languages: [python]
+    severity: ERROR

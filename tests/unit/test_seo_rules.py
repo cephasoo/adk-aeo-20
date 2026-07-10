@@ -308,3 +308,51 @@ def test_schema_type_awareness():
     assert "Article" in results["metrics"]["schema_types_present"]
     assert "Product" not in results["metrics"]["schema_types_missing"]
 
+
+def test_aeo_citation_checker_sge_parsing(monkeypatch):
+    from app.agent import audit_brand_aeo_visibility
+    # Set dummy API key to enable live path (which we will mock)
+    monkeypatch.setenv("SERPAPI_API_KEY", "dummy_key")
+
+    class MockResponse:
+        def __init__(self, json_data, status_code=200):
+            self.json_data = json_data
+            self.status_code = status_code
+
+        def json(self):
+            return self.json_data
+
+    def mock_get(url, params=None, *args, **kwargs):
+        params = params or {}
+        if params.get("engine") == "google_ai_overview":
+            return MockResponse({
+                "ai_overview": {
+                    "references": [
+                        {"title": "Publitas Guide", "link": "https://www.publitas.com/blog/what-is-a-lookbook/", "snippet": "A lookbook is a curated collection..."},
+                        {"title": "Indeed Career Advice", "link": "https://www.indeed.com/career-advice", "snippet": "A lookbook is a curated portfolio..."}
+                    ]
+                }
+            })
+        
+        return MockResponse({
+            "ai_overview": {
+                "page_token": "token_123"
+            },
+            "organic_results": [
+                {"title": "Top Lookbook Guide", "link": "https://example.com/lookbooks", "snippet": "Organic listing"}
+            ]
+        })
+
+    monkeypatch.setattr("requests.get", mock_get)
+
+    # 1. Test aeo_citation_checker SGE citation and SoM calculation
+    res = aeo_citation_checker("what is a lookbook", "https://www.publitas.com/blog/what-is-a-lookbook/")
+    assert "**Cited in AI Overview/Answer Box**: **✅ YES**" in res
+    assert "**Share of Model Score**: `33.3%`" in res
+
+    # 2. Test audit_brand_aeo_visibility SGE citation
+    visibility_res = audit_brand_aeo_visibility("Publitas", "what is a lookbook")
+    assert "**Brand Citations Found**: 1" in visibility_res
+    assert "**Share of Model (SoM)**: 33.3%" in visibility_res
+
+

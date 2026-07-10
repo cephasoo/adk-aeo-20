@@ -141,6 +141,8 @@ def audit_brand_aeo_visibility(brand_name: str, search_query: str, gl: str = "us
             {"title": "Organic Search Experts", "snippet": "A listing of search specialists globally.", "link": "https://moz.com/seo-list"},
             {"title": "How to scale your Shopify traffic", "snippet": "Tips and strategies for scaling organic traffic.", "link": "https://searchengineland.com/shopify-tips"}
         ]
+        organic_list = mock_results
+        ai_overview = {}
     else:
         try:
             # Query SerpAPI with standard parameters
@@ -159,22 +161,77 @@ def audit_brand_aeo_visibility(brand_name: str, search_query: str, gl: str = "us
                 return f"Error: Failed to fetch search results from SerpAPI (Status: {response.status_code})."
 
             data = response.json()
-            mock_results = data.get("organic_results", [])
+            organic_list = data.get("organic_results", [])
+            ai_overview = data.get("ai_overview", {})
+            page_token = ai_overview.get("page_token")
+            if page_token:
+                try:
+                    ai_resp = requests.get(
+                        "https://serpapi.com/search",
+                        params={
+                            "engine": "google_ai_overview",
+                            "page_token": page_token,
+                            "api_key": serpapi_key
+                        },
+                        timeout=10
+                    )
+                    if ai_resp.status_code == 200:
+                        ai_overview = ai_resp.json().get("ai_overview", ai_resp.json())
+                except Exception as e:
+                    print(f"[!] Warning: Failed to retrieve lazy-loaded AI Overview in visibility check: {e}")
         except Exception as e:
             return f"Error: Failed to connect to SerpAPI: {e}"
 
     citations = []
-    total_listings = len(mock_results)
+    scanned_items = []
+    from urllib.parse import urlparse
 
-    for item in mock_results:
+    # 1. Parse Organic Results
+    for item in organic_list:
         title = item.get("title", "")
         snippet = item.get("snippet", "")
         link = item.get("link", "")
+        if not link:
+            continue
+        scanned_items.append(link)
 
-        # Check if the brand name is mentioned (case insensitive)
-        if re.search(rf"\b{re.escape(brand_name)}\b", title + " " + snippet, re.IGNORECASE):
+        domain = urlparse(link).netloc.lower()
+        if (re.search(rf"\b{re.escape(brand_name)}\b", title + " " + snippet, re.IGNORECASE) or
+                brand_name.lower() in domain):
             citations.append(link)
 
+    # 2. Parse AI Overview references
+    for ref in ai_overview.get("references", []):
+        title = ref.get("title", "")
+        snippet = ref.get("snippet", "")
+        link = ref.get("link", "")
+        if not link:
+            continue
+        scanned_items.append(link)
+
+        domain = urlparse(link).netloc.lower()
+        if (re.search(rf"\b{re.escape(brand_name)}\b", title + " " + snippet, re.IGNORECASE) or
+                brand_name.lower() in domain):
+            citations.append(link)
+
+    # Parse AI Overview direct links
+    for l_obj in ai_overview.get("links", []):
+        link = l_obj.get("link", "")
+        if not link:
+            continue
+        scanned_items.append(link)
+
+        domain = urlparse(link).netloc.lower()
+        if brand_name.lower() in domain:
+            citations.append(link)
+
+    # Deduplicate while preserving order
+    seen_scanned = set()
+    scanned_items = [x for x in scanned_items if not (x in seen_scanned or seen_scanned.add(x))]
+    seen_citations = set()
+    citations = [x for x in citations if not (x in seen_citations or seen_citations.add(x))]
+
+    total_listings = len(scanned_items)
     som = (len(citations) / total_listings * 100) if total_listings > 0 else 0
 
     report = [

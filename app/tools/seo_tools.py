@@ -521,7 +521,7 @@ def aeo_citation_checker(search_query: str, target_url: str, gl: str = "us", hl:
         )
 
     try:
-        # Use SerpAPI Google AI Mode query directly
+        # Use SerpAPI Google Search
         response = requests.get(
             "https://serpapi.com/search",
             params={
@@ -538,30 +538,79 @@ def aeo_citation_checker(search_query: str, target_url: str, gl: str = "us", hl:
 
         data = response.json()
 
-        # Check answer box or knowledge graph / AI overview sources
         citations = []
         is_cited = False
         cited_text = ""
 
-        # Check answer box citations
-        answer_box = data.get("answer_box", {})
-        if "link" in answer_box:
-            citations.append(answer_box.get("link"))
-            if target_url.rstrip("/") in answer_box.get("link", "").rstrip("/"):
-                is_cited = True
-                cited_text = answer_box.get("snippet", "")
+        # 1. Parse AI Overview (Direct or Lazy-loaded)
+        ai_overview = data.get("ai_overview", {})
+        page_token = ai_overview.get("page_token")
+        if page_token:
+            try:
+                ai_resp = requests.get(
+                    "https://serpapi.com/search",
+                    params={
+                        "engine": "google_ai_overview",
+                        "page_token": page_token,
+                        "api_key": serpapi_key
+                    },
+                    timeout=10
+                )
+                if ai_resp.status_code == 200:
+                    ai_overview = ai_resp.json().get("ai_overview", ai_resp.json())
+            except Exception as e:
+                print(f"[!] Warning: Failed to retrieve lazy-loaded AI Overview: {e}")
 
-        # Check search citations in general
+        # Parse references in AI Overview
+        for ref in ai_overview.get("references", []):
+            link = ref.get("link", "")
+            if link:
+                citations.append(link)
+                if target_url.rstrip("/") in link.rstrip("/"):
+                    is_cited = True
+                    cited_text = f"{ref.get('title', '')} - {ref.get('snippet', '')}"
+
+        # Parse direct links in AI Overview
+        for l_obj in ai_overview.get("links", []):
+            link = l_obj.get("link", "")
+            if link:
+                citations.append(link)
+                if target_url.rstrip("/") in link.rstrip("/"):
+                    is_cited = True
+
+        # Extract text block excerpt if cited and no context yet
+        if is_cited and not cited_text:
+            text_blocks = ai_overview.get("text_blocks", [])
+            if text_blocks:
+                cited_text = text_blocks[0].get("text", "")
+
+        # 2. Check answer box as fallback
+        answer_box = data.get("answer_box", {})
+        ab_link = answer_box.get("link") or answer_box.get("displayed_link", "")
+        if ab_link:
+            citations.append(ab_link)
+            if target_url.rstrip("/") in ab_link.rstrip("/"):
+                is_cited = True
+                if not cited_text:
+                    cited_text = answer_box.get("snippet", "")
+
+        # 3. Check top organic results as additional pool
         organic_results = data.get("organic_results", [])
-        for item in organic_results[:4]: # Check top 4
+        for item in organic_results[:4]:
             link = item.get("link", "")
-            if target_url.rstrip("/") in link.rstrip("/"):
+            if link:
                 citations.append(link)
 
-        # Remove duplicates
-        citations = list(set(citations))
-        total_citations = len(citations) or 4
-        som_score = (1 / total_citations * 100) if is_cited else 0.0
+        # Remove duplicates while preserving order
+        seen = set()
+        citations = [x for x in citations if not (x in seen or seen.add(x))]
+
+        total_citations = len(citations)
+        som_score = 0.0
+        if is_cited and total_citations > 0:
+            target_domain = urlparse(target_url).netloc.lower()
+            brand_citations_count = sum(1 for c in citations if urlparse(c).netloc.lower() == target_domain)
+            som_score = (brand_citations_count / total_citations * 100)
 
         report = [
             f"### AEO Citation & Share of Model (SoM) Report",
