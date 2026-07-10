@@ -29,13 +29,13 @@ def markdown_to_html(text: str) -> str:
     import re
     import html
 
-    # 0. Protect and parse fenced code blocks first
+    # 0. Protect and parse fenced code blocks first (use clean alpha placeholders to prevent regex mangling)
     code_blocks = []
     def save_code_block(match):
         code_content = match.group(2)
         escaped_code = html.escape(code_content)
         code_blocks.append(escaped_code)
-        return f"___CODE_BLOCK_PLACEHOLDER_{len(code_blocks)-1}___"
+        return f"CODEBLOCKPLACEHOLDER{len(code_blocks)-1}"
 
     t = re.sub(r'```([a-zA-Z0-9_-]*)\n?(.*?)\n?```', save_code_block, text, flags=re.DOTALL)
 
@@ -43,7 +43,7 @@ def markdown_to_html(text: str) -> str:
     links = []
     def save_link(match):
         links.append(match.groups())
-        return f"___LINK_PLACEHOLDER_{len(links)-1}___"
+        return f"LINKPLACEHOLDER{len(links)-1}"
 
     t = re.sub(r'\[(.*?)\]\((.*?)\)', save_link, t)
 
@@ -54,7 +54,7 @@ def markdown_to_html(text: str) -> str:
     for idx, (link_text, url) in enumerate(links):
         escaped_link_text = html.escape(link_text)
         safe_url = url.replace('"', '&quot;')
-        t = t.replace(f"___LINK_PLACEHOLDER_{idx}___", f'<a href="{safe_url}">{escaped_link_text}</a>')
+        t = t.replace(f"LINKPLACEHOLDER{idx}", f'<a href="{safe_url}">{escaped_link_text}</a>')
 
     # 4. Convert bold **text** to <b>text</b>
     t = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', t)
@@ -89,7 +89,7 @@ def markdown_to_html(text: str) -> str:
 
     # 10. Restore code blocks inside <pre><code>
     for idx, code_content in enumerate(code_blocks):
-        t = t.replace(f"___CODE_BLOCK_PLACEHOLDER_{idx}___", f"<pre><code>{code_content}</code></pre>")
+        t = t.replace(f"CODEBLOCKPLACEHOLDER{idx}", f"<pre><code>{code_content}</code></pre>")
 
     return t
 

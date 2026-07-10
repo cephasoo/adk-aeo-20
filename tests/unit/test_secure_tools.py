@@ -53,3 +53,15 @@ def test_telegram_webhook_endpoint():
     response = client.post("/webhook", json=payload)
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_markdown_to_html_formatting():
+    from app.main import markdown_to_html
+    
+    text = "Here is a code block:\n```text\nQuery_name_with_underscores\nClicks_count\n```\nAnd a link: [Google](https://google.com)"
+    html_res = markdown_to_html(text)
+    
+    assert "<pre><code>Query_name_with_underscores\nClicks_count</code></pre>" in html_res
+    assert '<a href="https://google.com">Google</a>' in html_res
+    assert "PLACEHOLDER" not in html_res
+
