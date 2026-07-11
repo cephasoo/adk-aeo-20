@@ -1,5 +1,14 @@
 import os
 import sys
+
+# Reconfigure stdout/stderr to use UTF-8 with fallback replacement to prevent Windows and server-level encoding crashes
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='backslashreplace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='backslashreplace')
+    except Exception:
+        pass
+
 import time
 import requests
 from fastapi import FastAPI, Request, BackgroundTasks
