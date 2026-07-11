@@ -20,7 +20,9 @@ from app.tools.seo_tools import (
     canonical_audit,
     redirect_chain_detector,
     require_oauth_claims,
-    audit_hidden_faq_schema
+    audit_hidden_faq_schema,
+    discover_site_structure_tool,
+    map_product_lines_tool
 )
 from app.tools.wp_client import get_wp_credentials, base_site_url
 from app.tools.geo_utils import resolve_target_region
@@ -376,7 +378,8 @@ aeo_copilot_agent = LlmAgent(
         "3. Inspecting Google Search Console indexing, overall query/CTR performance metrics, and query-page mapping for verified properties.\n"
         "4. Running bulk canonical checks for cannibalization and tracing redirect loops/chains.\n"
         "5. Injecting schema metadata back into WordPress post/page metafields.\n"
-        "6. Publishing new Gutenberg pages using native blocks or custom React blocks based on user prompt.\n\n"
+        "6. Publishing new Gutenberg pages using native blocks or custom React blocks based on user prompt.\n"
+        "7. Mapping website top-level directories/subdomains and identifying product lines without deep crawling using 'discover_site_structure_tool' and 'map_product_lines_tool'.\n\n"
         "Geotargeting & Search Localization Guidelines:\n"
         "- When invoking organic search position tracking, visibility, or citation audit tools, you should ensure search results reflect the correct geographical target (e.g. use gl='ng' and hl='en' for searches targeting Nigeria, or 'uk' and 'en' for United Kingdom focus).\n\n"
         "Structured Data & Schema Rules:\n"
@@ -422,6 +425,8 @@ aeo_copilot_agent = LlmAgent(
         inject_aeo_schema_metafield,
         publish_gutenberg_page,
         audit_hidden_faq_schema,
+        discover_site_structure_tool,
+        map_product_lines_tool,
         read_doc,
         create_doc,
         append_doc,

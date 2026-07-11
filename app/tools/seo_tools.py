@@ -1107,3 +1107,25 @@ def audit_hidden_faq_schema(url: str, threshold: float = 0.80) -> str:
     except Exception as e:
         return json.dumps({"error": str(e), "status": "FAIL"})
 
+
+# =====================================================================
+# 11. SITE ARCHITECTURE & PRODUCT MAPPING TOOLS
+# =====================================================================
+
+def discover_site_structure_tool(url: str) -> str:
+    """
+    Parses homepage navigation menus and sitemap indexes to map the top-level
+    subdomains and subdirectories of a site ("seeing the forest for the tree").
+    """
+    from .site_mapper import discover_site_structure
+    return discover_site_structure(url)
+
+def map_product_lines_tool(url: str) -> str:
+    """
+    Parses homepage navigation menu text and URLs, and uses Gemini to map out
+    the brand's core product lines, modules, or services.
+    """
+    from .site_mapper import map_product_lines
+    return map_product_lines(url)
+
+
