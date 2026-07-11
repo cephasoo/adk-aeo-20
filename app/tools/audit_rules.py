@@ -1015,6 +1015,27 @@ def run_audit(html_content: str, page_url: str = "", intent: str = "") -> dict:
         f"Found {len(links)} outgoing link(s)."
     )
 
+    # 28. Crawl Depth / Orphaned Content Risk Audit
+    if page_url:
+        try:
+            parsed_url = urlparse(page_url)
+            path_parts = [p for p in parsed_url.path.split('/') if p]
+            if len(path_parts) > 1:
+                subdir_parts = path_parts[:-1]
+                depth = len(subdir_parts)
+                subdir_path = "/" + "/".join(subdir_parts) + "/"
+                add_result(
+                    "Crawl Depth / Orphaned Risk",
+                    depth >= 4,
+                    f"This page is located at a subdirectory depth of {depth} ('{subdir_path}'). "
+                    "Googlebot may struggle to discover and prioritize indexing for pages deeper than 3 subdirectory layers. "
+                    "Ensure this page has strong internal link coverage (e.g. from homepage or category headers) to prevent it from becoming orphaned.",
+                    f"Page subdirectory depth is {depth} ('{subdir_path}'), which is within the safe crawl depth limit (<= 3 layers).",
+                    is_warning=True
+                )
+        except Exception:
+            pass
+
     return {
         "errors": errors,
         "warnings": warnings,

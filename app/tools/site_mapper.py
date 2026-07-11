@@ -59,7 +59,7 @@ def discover_site_structure(url: str) -> str:
     except Exception as e:
         print(f"[!] Error fetching homepage in discover_site_structure: {e}")
 
-    # 2. Fetch Robots.txt & Sitemap Index Names (no deep pages)
+    # 2. Fetch Robots.txt Sitemap Links
     sitemaps = []
     try:
         parsed = urlparse(url)
@@ -72,38 +72,119 @@ def discover_site_structure(url: str) -> str:
     except Exception as e:
         print(f"[!] Error fetching robots.txt: {e}")
 
-    # If sitemaps found, fetch only the root sitemaps to see names (no page URLs)
-    sitemap_names = []
-    for sm in sitemaps[:3]: # Limit to first 3 sitemap links to avoid large responses
-        try:
-            sm_resp = requests.get(sm, headers=headers, timeout=5)
-            if sm_resp.status_code == 200:
-                # Find sitemap locations/names
-                sm_soup = BeautifulSoup(sm_resp.text, 'xml')
-                locs = sm_soup.find_all('loc')
-                for l in locs[:10]: # Limit to top 10 loc names
-                    sitemap_names.append(l.get_text().strip())
-        except Exception:
-            pass
+    # 3. Dynamic Sitemap Traverser (with cross-subdomain/sitemapindex discovery)
+    sitemaps_to_crawl = list(sitemaps)
+    # If no sitemaps found in robots.txt, try standard fallback sitemap.xml
+    if not sitemaps_to_crawl:
+        parsed = urlparse(url)
+        sitemaps_to_crawl.append(f"{parsed.scheme}://{parsed.netloc}/sitemap.xml")
 
-    # 3. Call Gemini to Synthesize the Top-Level Map
+    visited_sitemaps = set()
+    discovered_subdomains = set()
+    subdir_map = {}
+    
+    # Track main domain to distinguish subdomains
+    parsed_main = urlparse(url)
+    main_domain = parsed_main.netloc.split('@')[-1].split(':')[0]
+    discovered_subdomains.add(main_domain)
+
+    # Crawl sitemaps up to max depth of 2 (to prevent infinite loops / token bloat)
+    # We will fetch up to 10 sitemap files in total to protect unit economics/speed.
+    sitemap_count = 0
+    while sitemaps_to_crawl and sitemap_count < 10:
+        sm_url = sitemaps_to_crawl.pop(0)
+        if sm_url in visited_sitemaps:
+            continue
+        visited_sitemaps.add(sm_url)
+        sitemap_count += 1
+
+        try:
+            sm_resp = requests.get(sm_url, headers=headers, timeout=5)
+            if sm_resp.status_code == 200:
+                try:
+                    sm_soup = BeautifulSoup(sm_resp.text, 'xml')
+                except Exception:
+                    sm_soup = BeautifulSoup(sm_resp.text, 'html.parser')
+                
+                # Check if it is a Sitemap Index
+                sitemap_tags = sm_soup.find_all('sitemap')
+                if sitemap_tags:
+                    for tag in sitemap_tags:
+                        loc_tag = tag.find('loc')
+                        if loc_tag:
+                            nested_url = loc_tag.get_text().strip()
+                            sitemaps_to_crawl.append(nested_url)
+                            # Discover subdomain from the sitemap URL
+                            nest_parsed = urlparse(nested_url)
+                            nest_domain = nest_parsed.netloc.split('@')[-1].split(':')[0]
+                            if nest_domain.endswith(main_domain) and nest_domain != main_domain:
+                                discovered_subdomains.add(nest_domain)
+                
+                # Check for URLs (URL Set)
+                url_tags = sm_soup.find_all('url')
+                for tag in url_tags:
+                    loc_tag = tag.find('loc')
+                    if loc_tag:
+                        page_url = loc_tag.get_text().strip()
+                        # Discover subdomain from the page URL
+                        p_parsed = urlparse(page_url)
+                        p_domain = p_parsed.netloc.split('@')[-1].split(':')[0]
+                        if p_domain.endswith(main_domain) and p_domain != main_domain:
+                            discovered_subdomains.add(p_domain)
+                        
+                        # Process path components for subdirectory grouping
+                        path_parts = [p for p in p_parsed.path.split("/") if p]
+                        if len(path_parts) > 1:
+                            # Subdirectory path (everything except the last part/leaf)
+                            subdir_parts = path_parts[:-1]
+                            depth = len(subdir_parts)
+                            subdir_path = f"/{'/'.join(subdir_parts)}/"
+                            
+                            # Prefix with subdomain if it is different
+                            if p_domain != main_domain:
+                                subdir_path = f"[{p_domain}] {subdir_path}"
+                            
+                            if subdir_path not in subdir_map:
+                                subdir_map[subdir_path] = {"depth": depth, "urls": []}
+                            if len(subdir_map[subdir_path]["urls"]) < 5:
+                                subdir_map[subdir_path]["urls"].append(page_url)
+        except Exception as e:
+            print(f"[!] Error fetching sitemap {sm_url}: {e}")
+
+    # 4. Call Gemini to Synthesize the Top-Level Map
     model = get_model()
     if not model:
         return "Error: Gemini model client is not configured/available."
 
+    # Pack subdir mapping for the prompt
+    subdir_data = {}
+    for path, info in subdir_map.items():
+        subdir_data[path] = {
+            "crawl_depth": info["depth"],
+            "examples": info["urls"]
+        }
+
     prompt = f"""
-Analyze the following homepage navigation menu links and sitemap URLs for: "{url}".
-Infer the overall website architecture, listing:
-1. Active subdomains (e.g. blog.brand.com, app.brand.com).
-2. Major top-level directories and categories (e.g. /products/, /pricing/, /resources/).
+Analyze the following homepage navigation menu links, sitemap index files, subdirectories, and discovered subdomains for: "{url}".
+Infer the overall website architecture.
 
 Homepage Menu Links:
 {json.dumps(nav_links[:40], indent=2)}
 
-Sitemaps / Locations:
-{json.dumps(sitemap_names[:20], indent=2)}
+Discovered Subdomains:
+{json.dumps(list(discovered_subdomains), indent=2)}
 
-Respond ONLY with a clean, text-based hierarchical directory tree (indented with spaces) that shows "the forest for the tree" (do NOT list individual posts or deep content pages).
+Grouped Subdirectories & Examples (Level 1 to N, Crawl Depth):
+{json.dumps(subdir_data, indent=2)}
+
+Google Search Guidelines on Crawl Depth & Orphaned Content:
+- Crawling is the first stage of finding pages. Googlebot uses algorithmic processes to choose which pages to crawl.
+- Deeply nested directories (Crawl Depth >= 4, requiring more than 3 directory layers or clicks from the homepage) are at high risk of under-crawling, delayed indexation, or becoming "orphaned content" if they lack strong internal link structures.
+- A sitemap index or nested sitemaps can map out directories on multiple subdomains.
+
+TASKS:
+1. Generate a clean, text-based hierarchical directory tree (indented with spaces) that shows "the forest and the trees" (grouping folders under their respective subdomains, e.g., blog.example.com, and detailing subdirectory paths).
+2. Include a **"CRAWL DEPTH & ORPHANED CONTENT RISK AUDIT"** section. Identify any subdirectories with a Crawl Depth of 4 or more, flag them, explain the risk of indexation failures, and provide actionable recommendations.
 """
     try:
         response = model.api_client.models.generate_content(

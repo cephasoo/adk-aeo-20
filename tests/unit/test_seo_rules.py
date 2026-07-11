@@ -397,4 +397,20 @@ def test_resolve_target_region_localization(monkeypatch):
     assert location == "Namibia"
 
 
+def test_crawl_depth_orphaned_warning():
+    from app.tools.audit_rules import run_audit
+    
+    # 1. Test deep URL (depth 4)
+    res_deep = run_audit("<p>Test</p>", page_url="https://example.com/one/two/three/four/page")
+    warnings_deep = res_deep["warnings"]
+    assert any("Crawl Depth / Orphaned Risk" in w for w in warnings_deep)
+    assert any("depth of 4" in w for w in warnings_deep)
+
+    # 2. Test safe URL (depth 2)
+    res_safe = run_audit("<p>Test</p>", page_url="https://example.com/one/two/page")
+    warnings_safe = res_safe["warnings"]
+    assert not any("Crawl Depth / Orphaned Risk" in w for w in warnings_safe)
+
+
+
 
