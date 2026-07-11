@@ -23,6 +23,7 @@ from app.tools.seo_tools import (
     audit_hidden_faq_schema
 )
 from app.tools.wp_client import get_wp_credentials, base_site_url
+from app.tools.geo_utils import resolve_target_region
 
 from app.tools.google_docs_native import (
     read_google_doc as read_doc,
@@ -144,17 +145,27 @@ def audit_brand_aeo_visibility(brand_name: str, search_query: str, gl: str = "us
         organic_list = mock_results
         ai_overview = {}
     else:
+        # Resolve geotargeting
+        if gl == "us":
+            gl_resolved, location_resolved = resolve_target_region(search_query)
+        else:
+            gl_resolved, location_resolved = gl, None
+
         try:
+            search_params = {
+                "q": search_query,
+                "api_key": serpapi_key,
+                "engine": "google",
+                "gl": gl_resolved,
+                "hl": hl
+            }
+            if location_resolved:
+                search_params["location"] = location_resolved
+
             # Query SerpAPI with standard parameters
             response = requests.get(
                 "https://serpapi.com/search",
-                params={
-                    "q": search_query,
-                    "api_key": serpapi_key,
-                    "engine": "google",
-                    "gl": gl,
-                    "hl": hl
-                },
+                params=search_params,
                 timeout=10
             )
             if response.status_code != 200:
@@ -366,6 +377,8 @@ aeo_copilot_agent = LlmAgent(
         "4. Running bulk canonical checks for cannibalization and tracing redirect loops/chains.\n"
         "5. Injecting schema metadata back into WordPress post/page metafields.\n"
         "6. Publishing new Gutenberg pages using native blocks or custom React blocks based on user prompt.\n\n"
+        "Geotargeting & Search Localization Guidelines:\n"
+        "- When invoking organic search position tracking, visibility, or citation audit tools, you should ensure search results reflect the correct geographical target (e.g. use gl='ng' and hl='en' for searches targeting Nigeria, or 'uk' and 'en' for United Kingdom focus).\n\n"
         "Structured Data & Schema Rules:\n"
         "- Suggest appropriate structured data types matching the page intent (e.g., Article, Product, Review, LocalBusiness) by referencing Google's official Search Gallery: https://developers.google.com/search/docs/appearance/structured-data/search-gallery.\n"
         "- Avoid listing, discussing, or explaining irrelevant or non-applicable schema types in your reports.\n"

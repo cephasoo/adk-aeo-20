@@ -356,3 +356,45 @@ def test_aeo_citation_checker_sge_parsing(monkeypatch):
     assert "**Share of Model (SoM)**: 33.3%" in visibility_res
 
 
+def test_resolve_target_region_localization(monkeypatch):
+    from app.tools.geo_utils import resolve_target_region
+
+    # 1. Test offline keyword/TLD mapping fallback path (when model is None)
+    monkeypatch.setattr("app.tools.geo_utils.get_model", lambda: None)
+    
+    gl, location = resolve_target_region("namibia visa requirements for nigerian citizens")
+    assert gl == "ng"
+    assert location == "Nigeria"
+
+    gl, location = resolve_target_region("some generic query", "https://example.com.ng/how-to-apply")
+    assert gl == "ng"
+    assert location == "Nigeria"
+
+    gl, location = resolve_target_region("cyber essentials certification in london")
+    assert gl == "uk"
+    assert location == "United Kingdom"
+
+    gl, location = resolve_target_region("what is a lookbook", "https://publitas.com")
+    assert gl == "us"
+    assert location == "United States"
+
+    # 2. Test LLM dynamic extraction path
+    class MockModel:
+        class ApiClient:
+            class Models:
+                def generate_content(self, model, contents):
+                    class TextObj:
+                        text = '{"gl": "na", "location": "Namibia"}'
+                    return TextObj()
+            aio = None
+            models = Models()
+        api_client = ApiClient()
+        model = "gemini"
+
+    monkeypatch.setattr("app.tools.geo_utils.get_model", lambda: MockModel())
+    gl, location = resolve_target_region("restaurants in windhoek")
+    assert gl == "na"
+    assert location == "Namibia"
+
+
+

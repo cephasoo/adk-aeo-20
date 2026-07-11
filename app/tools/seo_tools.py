@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import urllib3
+from app.tools.geo_utils import resolve_target_region
 
 # Suppress insecure request warnings for local self-signed dev sites
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -350,7 +351,7 @@ def advanced_seo_audit(wp_post_id_or_url: str, intent: str = "") -> str:
 # 2. SERPAPI & AEO VISIBILITY TOOLS
 # =====================================================================
 
-def serp_position_tracker(target_url: str, search_query: str) -> str:
+def serp_position_tracker(target_url: str, search_query: str, gl: str = "us", hl: str = "en") -> str:
     """
     Checks the ranking position of a target URL in Google Search, audits SERP features, 
     tracks paid Google Ads, and semantically classifies search query intent using Gemini.
@@ -394,16 +395,26 @@ def serp_position_tracker(target_url: str, search_query: str) -> str:
     except Exception as e:
         print(f"[!] Warning: Failed to classify search intent via LLM: {e}")
 
+    # Resolve geotargeting
+    if gl == "us":
+        gl_resolved, location_resolved = resolve_target_region(search_query, target_url)
+    else:
+        gl_resolved, location_resolved = gl, None
+
     try:
+        search_params = {
+            "q": search_query,
+            "api_key": serpapi_key,
+            "engine": "google",
+            "gl": gl_resolved,
+            "hl": hl
+        }
+        if location_resolved:
+            search_params["location"] = location_resolved
+
         response = requests.get(
             "https://serpapi.com/search",
-            params={
-                "q": search_query,
-                "api_key": serpapi_key,
-                "engine": "google",
-                "gl": "us",
-                "hl": "en"
-            },
+            params=search_params,
             timeout=15
         )
         if response.status_code != 200:
@@ -520,17 +531,27 @@ def aeo_citation_checker(search_query: str, target_url: str, gl: str = "us", hl:
             f"- Share of Model: **25.0%** (1 out of 4 total citations)"
         )
 
+    # Resolve geotargeting
+    if gl == "us":
+        gl_resolved, location_resolved = resolve_target_region(search_query, target_url)
+    else:
+        gl_resolved, location_resolved = gl, None
+
     try:
+        search_params = {
+            "q": search_query,
+            "api_key": serpapi_key,
+            "engine": "google",
+            "gl": gl_resolved,
+            "hl": hl
+        }
+        if location_resolved:
+            search_params["location"] = location_resolved
+
         # Use SerpAPI Google Search
         response = requests.get(
             "https://serpapi.com/search",
-            params={
-                "q": search_query,
-                "api_key": serpapi_key,
-                "engine": "google",
-                "gl": gl,
-                "hl": hl
-            },
+            params=search_params,
             timeout=10
         )
         if response.status_code != 200:
@@ -662,7 +683,7 @@ def keyword_opportunity_finder(seed_query: str) -> str:
     except Exception as e:
         return f"Error fetching autocomplete keywords: {e}"
 
-def rich_snippet_verifier(search_query: str) -> str:
+def rich_snippet_verifier(search_query: str, gl: str = "us", hl: str = "en") -> str:
     """
     Checks if rich results/schema snippets are rendered in actual search listings for a query.
     """
@@ -676,14 +697,26 @@ def rich_snippet_verifier(search_query: str) -> str:
             f"- FAQ Accordion Snippet: **Verified** (FAQ dropdown blocks visible)"
         )
 
+    # Resolve geotargeting
+    if gl == "us":
+        gl_resolved, location_resolved = resolve_target_region(search_query)
+    else:
+        gl_resolved, location_resolved = gl, None
+
     try:
+        search_params = {
+            "q": search_query,
+            "api_key": serpapi_key,
+            "engine": "google",
+            "gl": gl_resolved,
+            "hl": hl
+        }
+        if location_resolved:
+            search_params["location"] = location_resolved
+
         response = requests.get(
             "https://serpapi.com/search",
-            params={
-                "q": search_query,
-                "api_key": serpapi_key,
-                "engine": "google"
-            },
+            params=search_params,
             timeout=10
         )
         if response.status_code != 200:
